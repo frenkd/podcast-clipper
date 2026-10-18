@@ -1,0 +1,26 @@
+.env
+.DS_Store
+*.log
+__pycache__/
+.venv/
+.env.*
+!.env.example
+
+# Episode folders: commit the materials (text), never media, renders or caches
+projects/**
+!projects/**/
+!projects/*/project.json
+!projects/*/source/*.md
+!projects/*/source/*.txt
+!projects/*/source/*.srt
+!projects/*/source/*.vtt
+!projects/*/work/words.json
+!projects/*/work/transcript.json
+!projects/*/work/transcript.clean.json
+!projects/*/concepts.md
+!projects/*/youtube.json
+!projects/*/episode/*.md
+!projects/*/episode/*.txt
+!projects/*/episode/*.srt
+!projects/*/scripts/*.py
+.venv-*/

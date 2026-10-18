@@ -1,0 +1,4 @@
+# Python >= 3.14. The engine is numpy + OpenCV + Pillow; everything else is the standard library (and ffmpeg).
+numpy>=2.3
+opencv-python>=5.0,<6   # FaceDetectorYN (YuNet) for faces; the old Haar cascades are gone in 5
+pillow>=12

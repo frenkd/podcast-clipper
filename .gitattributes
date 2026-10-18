@@ -1,0 +1,2 @@
+clip.cmd text eol=crlf
+clip text eol=lf

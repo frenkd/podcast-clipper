@@ -1,0 +1,6 @@
+#!/bin/sh
+# ./clip: the one command for this repo (run it without arguments for help). Windows: clip.cmd.
+DIR=$(cd "$(dirname "$0")" && pwd)
+PY="$DIR/.venv/bin/python"
+[ -x "$PY" ] || PY=python3
+PYTHONUTF8=1 PYTHONPATH="$DIR:$DIR/clips${PYTHONPATH:+:$PYTHONPATH}" exec "$PY" -m prep.cli "$@"

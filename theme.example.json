@@ -1,0 +1,9 @@
+{
+  "_help": "Copy to theme.json and change what you like; every key is optional. All keys: clips/clipkit/theme.py",
+  "name": "My Podcast",
+  "accent": "#FFC53D",
+  "captions": "clean",
+  "end_line": "Full episode on YouTube",
+  "logo": null,
+  "outro_chime": true
+}

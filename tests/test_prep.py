@@ -1,0 +1,124 @@
+import json
+import os
+import tempfile
+import threading
+import time
+import unittest
+
+os.environ.setdefault("CLIPPER_DATA_DIR", tempfile.mkdtemp(prefix="clip-test-"))
+
+from prep.fixes import fix_text, fix_words, parse_fix  # noqa: E402
+from prep.media import Budget  # noqa: E402
+from prep.soniox import stitch, tokens_to_words, words_to_cues  # noqa: E402
+from prep.store import create_project, find_project, slugify, update_project  # noqa: E402
+from prep.subtitles import parse_subtitles, to_srt  # noqa: E402
+
+
+def w(t, s, e, sp=None):
+    return {"t": t, "s": s, "e": e, **({"sp": sp} if sp else {})}
+
+
+class Transcripts(unittest.TestCase):
+    def test_tokens_merge_into_words_and_punctuation_sticks(self):
+        words = tokens_to_words([{"text": "Lepo", "start_ms": 0, "end_ms": 200, "speaker": "1"},
+                                 {"text": " poz", "start_ms": 250, "end_ms": 400, "speaker": "1"},
+                                 {"text": "dravljeni", "start_ms": 400, "end_ms": 700, "speaker": "1"},
+                                 {"text": ".", "start_ms": 700, "end_ms": 710, "speaker": "1"}])
+        self.assertEqual([x["t"] for x in words], ["Lepo", "pozdravljeni."])
+        self.assertEqual(words[1]["e"], 710)
+
+    def test_stitch_cuts_at_a_shared_pause_and_remaps_speakers(self):
+        a = [w("ena", 8000, 8400, "1"), w("dva", 9000, 9400, "1"), w("tri", 13000, 13400, "2"),
+             w("štiri", 15500, 15900, "2"), w("pet", 18000, 18400, "1")]
+        b = [w("tri", 13000, 13400, "1"), w("štiri", 15500, 15900, "1"), w("pet", 18000, 18400, "2"),
+             w("šest", 22000, 22400, "2")]
+        out = stitch([a, b], [0, 10000], 10000)
+        self.assertEqual([x["t"] for x in out], ["ena", "dva", "tri", "štiri", "pet", "šest"])
+        self.assertEqual(next(x for x in out if x["t"] == "šest")["sp"], "1")
+
+    def test_cues_split_on_speaker_change(self):
+        self.assertEqual(len(words_to_cues([w("Ja.", 0, 300, "1"), w("Točno", 400, 700, "2"), w("tako.", 700, 1000, "2")])), 2)
+
+    def test_srt_parsing_drops_exact_duplicates(self):
+        srt = ("1\n00:00:00,000 --> 00:00:02,000\nprvi\n\n2\n00:00:00,000 --> 00:00:02,000\nprvi popravljen\n\n"
+               "3\n00:00:03,000 --> 00:00:04,500\ndrugi\n")
+        self.assertEqual([c["text"] for c in parse_subtitles(srt)], ["prvi popravljen", "drugi"])
+
+    def test_srt_output_splits_long_cues_and_keeps_short_ones_readable(self):
+        srt = to_srt([{"i": 0, "s": 1000, "e": 1200, "text": "OK."}, {"i": 1, "s": 1600, "e": 3000, "text": "Naprej."}])
+        self.assertIn("00:00:01,000 --> 00:00:01,560", srt)
+        long = to_srt([{"i": 0, "s": 0, "e": 9000, "text": " ".join(["beseda"] * 30)}])
+        self.assertTrue(all(len(l) <= 84 for l in long.splitlines()))
+
+
+class Glued(unittest.TestCase):
+    def test_missing_spaces_after_punctuation_are_split(self):
+        from prep.soniox import split_glued
+        ws = [{"t": t, "s": 0, "e": 1000} for t in ("resources,right?", 'like"tiny', "1,5", "U.S.", "Hello.")]
+        self.assertEqual([w["t"] for w in split_glued(ws)], ["resources,", "right?", "like", '"tiny', "1,5", "U.S.", "Hello."])
+
+
+class Fixes(unittest.TestCase):
+    def test_fixes_keep_punctuation_capitals_and_time_span(self):
+        words = [w("pač", 0, 200), w("si", 200, 300), w("malo", 300, 500), w("smolil.", 500, 900), w("Čakrš", 1000, 1400)]
+        out = fix_words(words, [{"from": "malo smolil", "to": "mel smolo"}, {"from": "čakrš", "to": "Čakarmiš"}])
+        self.assertEqual([x["t"] for x in out], ["pač", "si", "mel", "smolo.", "Čakarmiš"])
+        self.assertEqual(out[2]["s"], 300)
+        self.assertEqual(out[3]["e"], 900)
+        self.assertEqual(fix_text("Malo smolil je, rekel Čakrš.", [{"from": "malo smolil", "to": "mel smolo"},
+                                                                 {"from": "Čakrš", "to": "Čakarmiš"}]),
+                         "Mel smolo je, rekel Čakarmiš.")
+
+    def test_fix_quotes_and_hyphens(self):
+        self.assertEqual(parse_fix('pomeni"iterative => pomeni »iterative'), {"from": 'pomeni"iterative', "to": "pomeni »iterative"})
+        out = fix_words([w("Miki-ju", 0, 100)], [{"from": "Miki-ju", "to": "Michieju"}])
+        self.assertEqual(out[0]["t"], "Michieju")
+
+
+class CleanupGuard(unittest.TestCase):
+    def test_translations_are_rejected_and_corrections_kept(self):
+        from prep.steps import faithful
+        self.assertFalse(faithful("the workshop on vector embeddings was really nice.",
+                                  "da je bila delavnica o vektorskih vdelavah res odlična."))
+        self.assertTrue(faithful("in sem mikiju seveda spet pokazal poskuse v medicinskih domenah",
+                                 "in sem Michieju seveda spet pokazal poskuse v medicinskih domenah (področjih)."))
+        self.assertTrue(faithful("Ja.", "Ja, ja."))
+
+
+class Store(unittest.TestCase):
+    def test_slugify(self):
+        self.assertEqual(slugify("Jürgen Vöß and the database - My Podcast (1080p, h264).mp4"), "jurgen-voss")
+
+    def test_concurrent_updates_never_lose_writes(self):
+        p = create_project("Test episode", "test concurrent")
+
+        def bump():
+            for _ in range(10):
+                update_project(p["id"], lambda q: q.__setitem__("n", q.get("n", 0) + 1))
+        ts = [threading.Thread(target=bump) for _ in range(4)]
+        [t.start() for t in ts]
+        [t.join() for t in ts]
+        self.assertEqual(find_project("test-concurrent")["n"], 40)
+
+
+class CpuBudget(unittest.TestCase):
+    def test_budget_never_exceeds_its_total(self):
+        b, now, peak, lock = Budget(8), [0], [0], threading.Lock()
+
+        def job(n):
+            with b.take(n):
+                with lock:
+                    now[0] += n
+                    peak[0] = max(peak[0], now[0])
+                time.sleep(0.01)
+                with lock:
+                    now[0] -= n
+        ts = [threading.Thread(target=job, args=(n,)) for n in (4, 4, 2, 1, 1, 4, 2, 8, 1)]
+        [t.start() for t in ts]
+        [t.join() for t in ts]
+        self.assertLessEqual(peak[0], 8)
+        self.assertEqual(now[0], 0)
+
+
+if __name__ == "__main__":
+    unittest.main()
