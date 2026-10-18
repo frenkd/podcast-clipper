@@ -3,10 +3,14 @@ or anything else, then `./clip render $episode $num`. See PLAYBOOK.md for what e
 from clipkit import *
 
 NAME = "$name"
-E = Edit(tight(($start, $end)))   # source seconds; tight() trims long pauses
-HEADLINE = $headline               # the opening line (None: no headline)
-STICKER = $sticker                 # a word or two that pops up beside the head (None: none)
-STICKER_T = E.dur * 0.45           # when
+# source seconds; tight() trims long pauses
+E = Edit(tight(($start, $end)))
+# the opening line (None: no headline)
+HEADLINE = $headline
+# a word or two that pops up beside the head (None: none)
+STICKER = $sticker
+# when
+STICKER_T = E.dur * 0.45
 CHUNKS = chunk_words(E.words(), 3, 16)
 BEATS = [ch["s"] for ch in CHUNKS][1::2]   # a zoom punch on every other caption
 
@@ -21,6 +25,8 @@ def draw(t, fr, face):
         intro(c, HEADLINE, face, t)
     if STICKER and STICKER_T <= t < STICKER_T + 1.8:
         im = sticker(STICKER, 60)
+        k = 0.6 + 0.4 * back_out((t - STICKER_T) / 0.25)  # pops in
+        im = im.resize((max(1, int(im.width * k)), max(1, int(im.height * k))), Image.BICUBIC)
         a = 1 - clamp01((t - STICKER_T - 1.55) / 0.25)
         beside_face(c, im.rotate(-6 + wobble(t, STICKER_T, 2), expand=True, resample=Image.BICUBIC), face, a)
     captions(c, CHUNKS, t, style="bold")

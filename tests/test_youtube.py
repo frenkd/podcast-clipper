@@ -9,7 +9,7 @@ os.environ.setdefault("CLIPPER_DATA_DIR", tempfile.mkdtemp(prefix="clip-test-"))
 from publish import youtube as yt  # noqa: E402
 from prep.store import create_project, project_dir  # noqa: E402
 
-OPIS = """# Databases vs. spreadsheets
+DESCRIPTION = """# Databases vs. spreadsheets
 
 Jane Doe on why her team moved off spreadsheets.
 
@@ -50,11 +50,11 @@ class Plan(unittest.TestCase):
         self.pid = create_project("YouTube test")["id"]
         d = os.path.join(project_dir(self.pid), "export", "1_databases")
         os.makedirs(d)
-        for name, data in (("1_databases.mp4", b"x"), ("thumbnail-1-frame.jpg", b"x"), ("description.md", OPIS.encode())):
+        for name, data in (("1_databases.mp4", b"x"), ("thumbnail-1-frame.jpg", b"x"), ("description.md", DESCRIPTION.encode())):
             with open(os.path.join(d, name), "wb") as f:
                 f.write(data)
 
-    def test_draft_takes_title_variant_one_and_the_episode_link(self):
+    def test_draft_takes_the_title_and_description(self):
         s = yt.draft_plan(self.pid)["shorts"][0]
         self.assertEqual(s["title"], "Databases vs. spreadsheets")
         self.assertEqual(s["description"], "Jane Doe on why her team moved off spreadsheets.\n\n#databases #podcast\n"

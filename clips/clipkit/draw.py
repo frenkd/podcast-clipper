@@ -63,7 +63,7 @@ def emoji(ch, size):
 
 
 def _split_emoji(text, fpath=None, findex=0):
-    """("e", emoji) / ("t", text) parts; symbols the font itself has (✓ ✗ ★ in Iosevka) stay text"""
+    """("e", emoji) / ("t", text) parts; symbols the font itself has (✓ ✗ ★ in JetBrains Mono) stay text"""
     out = []
     for part in EMOJI_RE.split(text):
         if part and EMOJI_RE.fullmatch(part) and fpath and all(has_glyph(fpath, c, findex) for c in part.replace("️", "")):

@@ -27,7 +27,7 @@ def now():
     return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
-STOP = {"in", "za", "z", "s", "the", "and", "of", "podcast", "epizoda", "1080p", "720p", "h264", "final",
+STOP = {"in", "the", "and", "of", "on", "with", "podcast", "episode", "ep", "1080p", "720p", "h264", "final",
         "v1", "v2"}
 
 

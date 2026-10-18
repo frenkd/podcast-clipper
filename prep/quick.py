@@ -46,15 +46,16 @@ def suggest(text, style, language):
         return {}
     from .llm import llm_json, obj, string as s
     want = {"headline": s("the opening line on screen: at most 7 words, makes you want to hear the rest, in the "
-                          "clip's language, no hashtags or emoji")}
+                          "language the clip is spoken in, sentence case, no hashtags or emoji")}
     if style == "bold":
-        want["sticker"] = s("one or two words for a sticker at the clip's key moment, in the clip's language")
+        want["sticker"] = s("one or two words for a sticker at the clip's key moment, in the language the clip is "
+                            "spoken in")
     if style == "meme":
         want["meme"] = s("a short meme caption for the end, the 'SIGMA RULE #N' or 'meanwhile…' kind, max 6 words, "
-                         "funny but kind, in the clip's language")
+                         "funny but kind, in the language the clip is spoken in")
     try:
         return llm_json("You write on-screen text for short vertical podcast clips. Be specific to what is said.",
-                        f"Language: {language}\nWhat is said in the clip:\n{text}", obj(**want), "clip_text", "fast")
+                        f"Language: {language or 'the one the text below is in'}\nWhat is said in the clip:\n{text}", obj(**want), "clip_text", "fast")
     except (SystemExit, OSError, ValueError, KeyError):
         return {}
 
@@ -69,13 +70,14 @@ def write_script(pid, a, b, style, headline=None, sticker=None, meme=None, name=
     text = spoken(pid, a, b)
     if not text:
         raise SystemExit(f"nothing is said between {a:.1f} and {b:.1f} s (is the episode transcribed? `./clip go`)")
-    lang = (read_json(os.path.join(project_dir(pid), "project.json")) or {}).get("language") or "en"
+    lang = (read_json(os.path.join(project_dir(pid), "project.json")) or {}).get("language")
     if headline is None or (style == "bold" and sticker is None) or (style == "meme" and meme is None):
         got = suggest(text, style, lang)
         headline = got.get("headline") if headline is None else headline
         sticker = got.get("sticker") if sticker is None else sticker
         meme = got.get("meme") if meme is None else meme
-    words = re.sub(r"[^a-z0-9]+", " ", (name or headline or " ".join(text.split()[:5])).lower()).split()
+    from .store import slugify  # (č -> c, ß -> ss, …)
+    words = slugify(name or headline or " ".join(text.split()[:5]), 8).split("-")
     slug = ""
     for w in words:  # whole words, up to ~32 characters
         if slug and len(slug) + 1 + len(w) > 32:

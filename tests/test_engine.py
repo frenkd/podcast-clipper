@@ -10,7 +10,7 @@ _proj = os.path.join(_tmp, "projects", "unit")
 os.makedirs(os.path.join(_proj, "work"))
 os.makedirs(os.path.join(_proj, "source"))
 with open(os.path.join(_proj, "project.json"), "w") as _f:
-    json.dump({"id": "unit", "title": "Unit", "people": ["Alex Host", "Ana Gost"],
+    json.dump({"id": "unit", "title": "Unit", "people": ["Alex Host", "Ana Guest"],
                "files": [{"name": "x.mp4", "kind": "video"}]}, _f)
 with open(os.path.join(_proj, "work", "words.json"), "w") as _f:
     json.dump([{"t": "ena", "s": 0, "e": 300, "sp": "1"}], _f)
@@ -54,7 +54,7 @@ class Theme(unittest.TestCase):
         ch = chunk_words([{"t": "hello", "s": 0.0, "e": 0.4, "sp": "1"}, {"t": "world", "s": 0.5, "e": 0.9, "sp": "1"}])[0]
         for style in ("clean", "bold"):
             self.assertTrue(cap(ch, 0.6, style=style).getbbox(), style)
-        self.assertTrue(brand_hook("Two lines\nof headline", 72, name="Ana Gost").getbbox())
+        self.assertTrue(brand_hook("Two lines\nof headline", 72, name="Ana Guest").getbbox())
 
 
 class Effects(unittest.TestCase):
@@ -99,10 +99,10 @@ class Look(unittest.TestCase):
         self.assertLessEqual(np.abs(np.diff(g)).max(), 3)
 
     def test_tag_keeps_its_width_while_it_animates(self):
-        self.assertEqual(tag("Ana Gost", 40, 0.6).size, tag("Ana Gost", 40, 1.0).size)
+        self.assertEqual(tag("Ana Guest", 40, 0.6).size, tag("Ana Guest", 40, 1.0).size)
 
     def test_guest_is_not_the_host(self):
-        self.assertEqual(GUEST, "Ana Gost")
+        self.assertEqual(GUEST, "Ana Guest")
 
 
 class LayoutQA(unittest.TestCase):

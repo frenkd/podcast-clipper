@@ -405,7 +405,7 @@ def sheet(data=None):
             k = tw / SW
             for s in a["slots"]:
                 x, yy, z = s["x"] * k, s["y"] * k, s["size"] * k
-                td.rectangle((x - z / 2, yy - z / 2, x + z / 2, yy + z / 2), outline=(240, 66, 111), width=3)
+                td.rectangle((x - z / 2, yy - z / 2, x + z / 2, yy + z / 2), outline=(255, 197, 61), width=3)
                 sp = s.get("speaker")
                 conf = s.get("confidence")
                 weak = conf is not None and conf < 0.2

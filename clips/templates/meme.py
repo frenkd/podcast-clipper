@@ -4,10 +4,14 @@ clip script: edit the settings below or anything else, then `./clip render $epis
 from clipkit import *
 
 NAME = "$name"
-E = Edit(tight(($start, $end)))   # source seconds; tight() trims long pauses
-HEADLINE = $headline               # the opening line (None: no headline)
-DROP_TEXT = $meme                  # the caption of the drop
-DROP = 2.6                         # seconds of drop after the last word
+# source seconds; tight() trims long pauses
+E = Edit(tight(($start, $end)))
+# the opening line (None: no headline)
+HEADLINE = $headline
+# the caption of the drop
+DROP_TEXT = $meme
+# seconds of drop after the last word
+DROP = 2.6
 CHUNKS = chunk_words(E.words(), 3, 16)
 BEATS = [ch["s"] for ch in CHUNKS]
 

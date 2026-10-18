@@ -3,8 +3,10 @@ or anything else, then `./clip render $episode $num`. See PLAYBOOK.md for what e
 from clipkit import *
 
 NAME = "$name"
-E = Edit(tight(($start, $end)))   # source seconds; tight() trims long pauses
-HEADLINE = $headline               # the opening line (None: no headline)
+# source seconds; tight() trims long pauses
+E = Edit(tight(($start, $end)))
+# the opening line (None: no headline)
+HEADLINE = $headline
 CHUNKS = chunk_words(E.words(), 4, 22)
 
 
