@@ -216,5 +216,16 @@ class FirstRun(unittest.TestCase):
         self.assertIn("COVERS FACE", text)
 
 
+
+class Fallbacks(unittest.TestCase):
+    def test_stock_lines_follow_the_language(self):
+        from prep.quick import FALLBACK, fallback
+        self.assertEqual(fallback("sl", "credit_top"), "Režija")
+        self.assertEqual(fallback("pt-BR", "credit_top"), "Directed by")  # not in the table: English
+        self.assertEqual(fallback(None, "left"), "Me")
+        for lang, lines in FALLBACK.items():
+            self.assertEqual(set(lines), set(FALLBACK["en"]), lang)
+
+
 if __name__ == "__main__":
     unittest.main()

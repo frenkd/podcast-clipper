@@ -9,7 +9,7 @@ E = Edit(tight(($start, $end)))
 # the opening line (None: no headline)
 HEADLINE = $headline
 # the credits card: a small line over a big name (None: whoever is on screen, else the show's name)
-CREDIT_TOP = "Directed by"
+CREDIT_TOP = $credit_top
 CREDIT = $credit
 # seconds of freeze and credits after the last word
 FREEZE = 3.2
@@ -33,7 +33,8 @@ def draw(t, fr, face):
             name = CREDIT or speaker() or THEME["name"] or "nobody, apparently"
             place(c, credits_card(CREDIT_TOP, name, 92), W / 2, H * 0.66, 1, a)
         return c
-    end_card(k - FREEZE, faded(c))
+    c = faded(c)
+    end_card(k - FREEZE, c)
     return c
 
 

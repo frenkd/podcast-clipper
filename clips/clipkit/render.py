@@ -66,12 +66,14 @@ def render(name, edit, draw, sound=None, tail=1.8, bed=None, bed_gain=0.2, duck=
     state.HOOK_SLOTS = {k: _hook_slot(v["rects"], v["h"]) for k, v in probe.items()}
 
     poster = None
+    state.COVER = poster_t is not None
     if poster_t is not None:
         ps = best_poster(edit)
         poster = draw(poster_t, full_frame(ps), tuple(tr[min(len(tr) - 1, int(round((edit.out_t(ps) or 0) * FPS)))]))
         poster.convert("RGB").save(rbase + ".cover.jpg", quality=92)
         if not _same_angle(ps, edit.pieces[0][0]):  # frame one only if it's the opening shot's camera: else it
             poster = None                          # flashes another shot for a frame (the .cover.jpg stays)
+            state.COVER = False
 
     # review captures, taken from the frames as they're written (no seeking afterwards)
     events = _events(draw, edit.dur)

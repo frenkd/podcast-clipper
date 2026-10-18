@@ -6,12 +6,16 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from . import state
 from .draw import asset, clamp01, ease_out, place, text_block, text_line
-from .project import ACCENT, EPISODE, EPISODE_TITLE, F_BLACK, F_MONO, F_MONO_B, F_XBOLD, GUEST, H, LAYOUT, ON_ACCENT, TEXT, THEME, W
+from .project import ACCENT, EPISODE, EPISODE_TITLE, F_BLACK, F_MONO, F_MONO_B, F_XBOLD, GUEST, H, LANG, LAYOUT, ON_ACCENT, TEXT, THEME, W
 from .style import GAP, MUTED, bar, fade_in, tag
 from .video import BAND, face_out, face_rect
 from .words import active, clean_word
 
 from .safezones import PLATFORMS, PRIMARY, safe_box, safe_width
+
+FULL_EPISODE = {"en": "Full episode: link in bio", "sl": "Celotna epizoda: povezava v opisu",
+                "hr": "Cijela epizoda: poveznica u opisu", "de": "Ganze Folge: Link in der Bio",
+                "es": "Episodio completo: enlace en la bio", "fr": "Épisode complet : lien en bio"}
 SAFE_TOP = safe_box()[1]           # below every primary app's top bar (safezones.py)
 CAPTION_Y = 1400                   # captions centred here, clear of the apps' caption/username block at the bottom,
 CAPTION_TOP = CAPTION_Y - 120      # taking up to two lines from here down,
@@ -135,7 +139,7 @@ def intro(c, text, face, t, until=2.6, size=72):
     if t >= until + 0.3:
         return
     a = 1 - ease_out((t - until) / 0.3)
-    k = t / 0.45
+    k = 1.0 if state.COVER else t / 0.45  # after the cover frame (which shows it whole) it's already in
     wide = brand_hook(text, size, k=k)
     narrow = brand_hook(text, _narrow_size(text, size), max_w=HOOK_TEXT_W, k=k)
     if state.PROBE is not None:
@@ -292,6 +296,6 @@ def end_card(t, canvas, tagline=None):
         y += 76
     line = tagline or THEME["end_line"]
     if not (line or logo is not None or EPISODE_TITLE or EPISODE or speaker()):
-        line = "Full episode: link in bio"  # never an empty end card (theme.json's end_line replaces this)
+        line = FULL_EPISODE.get(LANG[:2], FULL_EPISODE["en"])  # never an empty end card (theme.json's end_line replaces it)
     if line:
         place(canvas, text_line(line, F_MONO, 42, MUTED), W / 2, y + 26, 1, ease_out((t - 0.55) / 0.3))

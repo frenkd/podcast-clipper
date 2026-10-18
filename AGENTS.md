@@ -27,6 +27,10 @@ Most people meet this repo with no setup, one video and a vague wish. Keep them 
   texts yourself (`--headline`, `--sticker` …).
 - **Say how long things take** before they start: transcription is a few minutes per hour of audio, the first
   render of an episode analyses its cameras once (a few minutes), each preview takes about as long as the clip.
+- **Names on screen:** the name line shows who's talking. Without `CLIPPER_HOST` or names in the brief, the
+  host is labelled "host" and guests have no names: after `./clip go`, read the first minutes of
+  `./clip transcript <id>`, and if people introduce themselves, fill `"speakers"` in `project.json` (speaker id ->
+  name, e.g. `{"1": "Ana", "2": "Marko"}`), then confirm with the user.
 - **No times in mind?** Don't ask for timestamps: read the transcript and pick the moments (PLAYBOOK §3).
 - **Check who's on screen** in every first preview: look at a few frames, not only the QA line. QA clean means
   nothing covers a face; a `SPEAKER?` note means the person shown may not be the one talking (PLAYBOOK §2).
@@ -63,10 +67,11 @@ Do these in order and tell the user briefly what you did. Ask before installing 
    ```
    (Windows: `py -3.14 -m venv .venv` and `.venv\Scripts\pip install -r requirements.txt`.)
 4. **API keys.** `cp .env.example .env` if there's no `.env`. Ask the user to open `.env` themselves and fill in
-   `OPENAI_API_KEY` (transcription, reading notes, transcript cleanup, headlines, cover frames) and `CLIPPER_HOST`
-   (the host's first name, so the guest is detected right). Optional, for transcription: `ELEVENLABS_API_KEY` or
-   `SONIOX_API_KEY` get names, speakers and other languages right more often; whichever is set is used instead of
-   OpenAI (`STT=soniox|elevenlabs|openai` picks one when several are).
+   at least one key (see "Keys" above): `ELEVENLABS_API_KEY` (the best transcription: names, speakers, other
+   languages), `OPENAI_API_KEY` (transcription too, plus reading notes, transcript cleanup, headlines, cover
+   frames), or `SONIOX_API_KEY`. Transcription uses ElevenLabs, then Soniox, then OpenAI, whichever is set first
+   (`STT=elevenlabs|soniox|openai` picks one). Also `CLIPPER_HOST`: the host's first name, so the host and guest
+   aren't mixed up.
    **Never** ask for keys in the chat, never print `.env` or a key, never put keys anywhere but `.env` (it's
    git-ignored). Check without revealing:
    `.venv/bin/python -c "import re;t=open('.env').read();print({k:bool(re.search(k+r'=\S+',t)) for k in ['OPENAI_API_KEY','ELEVENLABS_API_KEY','SONIOX_API_KEY']})"`

@@ -99,15 +99,17 @@ def main(argv=None):
         from prep import quick
         ap = argparse.ArgumentParser(prog="./clip quick", description="the starter path: one clip from a time range")
         ap.add_argument("episode")
-        ap.add_argument("range", help="start-end, e.g. 12:30-13:05")
+        ap.add_argument("range", help="start-end in the episode: 12:30-13:05, 12:30.5-13:04.8 or seconds (750-785)")
         ap.add_argument("--style", default="chill", choices=list(quick.STYLES))
         for opt in ("headline", "sticker", "meme", "drama", "credit", "doc-line", "name"):
             ap.add_argument(f"--{opt}")
+        ap.add_argument("--ticker", help='news style: the ticker lines, separated by | ("One|Two|Three")')
         ap.add_argument("--final", action="store_true")
         q = ap.parse_args(rest)
         p = find_project(q.episode)
         a, b = quick.parse_range(q.range)
-        path = quick.write_script(p["id"], a, b, q.style, q.headline, q.sticker, q.meme, q.name, q.drama, q.credit, q.doc_line)
+        path = quick.write_script(p["id"], a, b, q.style, q.headline, q.sticker, q.meme, q.name, q.drama, q.credit, q.doc_line,
+                                  [x.strip() for x in q.ticker.split("|") if x.strip()] if q.ticker else None)
         print(f"wrote scripts/{os.path.basename(path)} in {p['id']} ({q.style}: {quick.STYLES[q.style]})\n"
               f"rendering a preview; edit the script and `./clip render {p['id']} {os.path.basename(path)[:2]}` any time", flush=True)
         return _engine([os.path.join(ROOT, "clips", "run.py")], [p["id"], path] + (["--final"] if q.final else []))

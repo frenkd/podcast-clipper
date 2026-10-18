@@ -446,7 +446,7 @@ def sheet(data=None):
                 td.rectangle((x - z / 2, yy - z / 2, x + z / 2, yy + z / 2), outline=(255, 197, 61), width=3)
                 sp = s.get("speaker")
                 conf = s.get("confidence")
-                weak = conf is not None and conf < 0.2
+                weak = conf is not None and conf < 0.2 or s.get("by") == "look" and (conf or 0) < 0.4
                 td.text((x - z / 2, yy + z / 2 + 2),
                         (f"{a['slots'].index(s) + 1}: {names.get(sp, sp)}" if sp else f"{a['slots'].index(s) + 1}: ?")
                         + (" (?)" if weak else ""), font=f, fill=(255, 140, 0) if weak or not sp else (255, 255, 0))

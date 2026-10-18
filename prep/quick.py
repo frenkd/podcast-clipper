@@ -96,7 +96,7 @@ def suggest(text, style, language):
 
 
 def write_script(pid, a, b, style, headline=None, sticker=None, meme=None, name=None, drama=None, credit=None,
-                 doc_line=None):
+                 doc_line=None, ticker=None):
     """-> path of the new clip script in projects/<id>/scripts/"""
     if style not in STYLES:
         raise SystemExit(f"--style {style}? one of: {', '.join(STYLES)}")
@@ -134,17 +134,43 @@ def write_script(pid, a, b, style, headline=None, sticker=None, meme=None, name=
             meme=json.dumps(meme or f"sigma rule #{int(a) % 89 + 11}", ensure_ascii=False),
             sticker_word=json.dumps(got.get("sticker_word") or sticker or "", ensure_ascii=False),
             drama=json.dumps(drama or "wait what", ensure_ascii=False),
-            doc_label=json.dumps(got.get("doc_label") or "Day 1", ensure_ascii=False),
-            doc_line=json.dumps(doc_line or got.get("doc_line") or "The podcaster, in its natural habitat.",
-                                ensure_ascii=False),
-            ticker=json.dumps(got.get("ticker") or ["Local podcast says something", "More at eleven",
-                                                    "Experts: this clip is a clip"], ensure_ascii=False),
+            doc_label=json.dumps(got.get("doc_label") or fallback(lang, "doc_label"), ensure_ascii=False),
+            doc_line=json.dumps(doc_line or got.get("doc_line") or fallback(lang, "doc_line"), ensure_ascii=False),
+            ticker=json.dumps(ticker or got.get("ticker") or fallback(lang, "ticker"), ensure_ascii=False),
+            credit_top=json.dumps(fallback(lang, "credit_top"), ensure_ascii=False),
             **board,
             credit=json.dumps(credit or project.get("host") or (project.get("people") or [None])[0], ensure_ascii=False))
     path = os.path.join(scripts, fname + ".py")
     with open(path, "w", encoding="utf-8") as f:
         f.write(src)
     return path
+
+
+FALLBACK = {  # the templates' stock lines when there's no LLM (or it left one out), per episode language
+    "en": dict(credit_top="Directed by", doc_label="Day 1", doc_line="The podcaster, in its natural habitat.",
+               ticker=["Local podcast says something", "More at eleven", "Experts: this clip is a clip"],
+               left="Me", right="Everyone else"),
+    "sl": dict(credit_top="Režija", doc_label="1. dan", doc_line="Podkaster v svojem naravnem okolju.",
+               ticker=["Lokalni podkast nekaj reče", "Več ob enajstih", "Strokovnjaki: ta posnetek je posnetek"],
+               left="Jaz", right="Vsi ostali"),
+    "hr": dict(credit_top="Režija", doc_label="Dan 1.", doc_line="Podcaster u svom prirodnom staništu.",
+               ticker=["Lokalni podcast nešto kaže", "Više u jedanaest", "Stručnjaci: ovaj isječak je isječak"],
+               left="Ja", right="Svi ostali"),
+    "de": dict(credit_top="Regie", doc_label="Tag 1", doc_line="Der Podcaster in seinem natürlichen Lebensraum.",
+               ticker=["Lokaler Podcast sagt etwas", "Mehr um elf", "Experten: Dieser Clip ist ein Clip"],
+               left="Ich", right="Alle anderen"),
+    "es": dict(credit_top="Dirigido por", doc_label="Día 1", doc_line="El podcaster, en su hábitat natural.",
+               ticker=["Un pódcast local dice algo", "Más a las once", "Expertos: este clip es un clip"],
+               left="Yo", right="Todos los demás"),
+    "fr": dict(credit_top="Réalisé par", doc_label="Jour 1", doc_line="Le podcasteur, dans son habitat naturel.",
+               ticker=["Un podcast local dit quelque chose", "Plus d'infos à onze heures", "Experts : ce clip est un clip"],
+               left="Moi", right="Tous les autres"),
+}
+
+
+def fallback(lang, key):
+    """a stock line in the episode's language (English when it isn't in FALLBACK)"""
+    return FALLBACK.get((lang or "en")[:2], FALLBACK["en"])[key]
 
 
 def boards(style, got, text, project):
@@ -167,7 +193,8 @@ def boards(style, got, text, project):
         return dict(chart_title=j(got.get("chart_title") or ""), unit=j(got.get("unit") or ""), bars=j(bars))
     if style == "versus":
         people = project.get("people") or []
-        return dict(left=j(got.get("left") or "Me"), right=j(got.get("right") or "Everyone else"),
+        lang = project.get("language")
+        return dict(left=j(got.get("left") or fallback(lang, "left")), right=j(got.get("right") or fallback(lang, "right")),
                     nl=int(got.get("left_count") or 1), nr=int(got.get("right_count") or 30),
                     left_word=j(got.get("left_word") or (spoken[0] if spoken else "")),
                     right_word=j(got.get("right_word") or (spoken[len(spoken) // 3] if spoken else "")),

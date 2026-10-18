@@ -113,12 +113,28 @@ A chill clip with one meme drop on the punchline is often the funniest version. 
 
 ```bash
 ./clip quick <id> 12:30-13:05 --style <one of the eleven in §4> [--headline "…"] [--sticker "…"]
-                                [--meme "…"] [--drama "…"] [--credit "…"] [--doc-line "…"]
+                                [--meme "…"] [--drama "…"] [--credit "…"] [--doc-line "…"] [--ticker "a|b|c"]
 ```
+
+Times can have decimals (`12:30.4-13:05.2`) or be plain seconds (`750-785`).
 
 With an OpenAI key it writes the headline and the rest (the sticker, the drop's caption, the ticker, the board and
 the words each part appears on) itself; `credits` names whoever is on screen unless you pass `--credit`. The result
 is a normal script in `projects/<id>/scripts/`: edit it like any other.
+
+Without an OpenAI key, pass what each style shows (else it gets stock lines in the episode's language, or none):
+
+| style | pass |
+|---|---|
+| every style | `--headline` (else no opening headline) |
+| bold | `--sticker` |
+| meme | `--meme` (the drop's caption) |
+| dramatic | `--drama` (the punchline's reaction) |
+| credits | `--credit` (else whoever is on screen) |
+| documentary | `--doc-line` (the narrator card) |
+| news | `--ticker` |
+| list, versus | edit `ITEMS` / the sides in the script (stock picks from the words otherwise) |
+| chart | needs an OpenAI key, or write `BARS` in the script yourself |
 
 **The full path.** Scripts go in `projects/<id>/scripts/NN_name.py` (shared helpers: `_name.py`). Start from a
 template; `from clipkit import *` gives you everything (summary at the end).

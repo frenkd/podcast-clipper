@@ -124,6 +124,10 @@ def step_transcribe(pid, use_subtitles=None):
         cached = read_json(os.path.join(work_dir(pid), "words.json"))
         people = p.get("people") or []
         source = stt.provider()
+        if not cached:
+            mins = ((p.get("video") or {}).get("duration") or 0) / 60
+            print(f"transcribing with {source} ({'ElevenLabs' if source == 'elevenlabs' else source.capitalize()}): "
+                  f"usually a few minutes{f' for {mins:.0f} min of audio' if mins else ''}", flush=True)
         words = cached or stt.transcribe(
             audio, (p.get("video") or {}).get("duration") or probe(video)["duration"],
             {"topic": p.get("brief") or p["title"], "speakers": ", ".join(people) or None, "text": p.get("brief"),
