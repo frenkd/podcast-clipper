@@ -17,7 +17,7 @@ prepare an episode
   new <video> [notes.md subs.srt …] [--slug name] [--go]   new episode folder (--go: run all steps)
   add <episode> <files…>                  add notes, a script, subtitles…
   go <episode>                            run the steps not done yet: context -> transcribe -> clean
-  step <episode> context|transcribe|clean [--soniox|--subs]   re-run one step
+  step <episode> context|transcribe|clean [--audio|--subs]   re-run one step (--audio: from the audio, not subtitles)
   step <episode> speakers                 re-diarize only (keeps words and timings), e.g. after a speaker mix-up
   ls | show <episode>                     list episodes | status of one
   meta <episode> [--title …] [--episode S05E07] [--guest "First Last"] [--episode-title "…"] [--cuts tight|normal|loose|0.6]
@@ -112,7 +112,7 @@ def main(argv=None):
 
     ap = argparse.ArgumentParser(prog=f"./clip {cmd}", add_help=False)
     ap.add_argument("pos", nargs="*")
-    for flag in ("go", "soniox", "subs"):
+    for flag in ("go", "audio", "soniox", "subs"):
         ap.add_argument(f"--{flag}", action="store_true")
     for opt in ("slug", "title", "episode", "episode-title", "guest", "cuts"):
         ap.add_argument(f"--{opt}")
@@ -144,7 +144,7 @@ def main(argv=None):
         if step == "context":
             step_context(p["id"])
         elif step == "transcribe":
-            step_transcribe(p["id"], False if a.soniox else True if a.subs else None)
+            step_transcribe(p["id"], False if (a.audio or a.soniox) else True if a.subs else None)
         elif step == "clean":
             step_clean(p["id"])
         elif step == "speakers":

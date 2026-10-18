@@ -9,7 +9,8 @@ os.environ.setdefault("CLIPPER_DATA_DIR", tempfile.mkdtemp(prefix="clip-test-"))
 
 from prep.fixes import fix_text, fix_words, parse_fix  # noqa: E402
 from prep.media import Budget  # noqa: E402
-from prep.soniox import stitch, tokens_to_words, words_to_cues  # noqa: E402
+from prep.soniox import tokens_to_words  # noqa: E402
+from prep.stt import stitch, words_to_cues  # noqa: E402
 from prep.store import create_project, find_project, slugify, update_project  # noqa: E402
 from prep.subtitles import parse_subtitles, to_srt  # noqa: E402
 
@@ -118,6 +119,39 @@ class CpuBudget(unittest.TestCase):
         [t.join() for t in ts]
         self.assertLessEqual(peak[0], 8)
         self.assertEqual(now[0], 0)
+
+
+class SpeechToText(unittest.TestCase):
+    def test_provider_prefers_soniox_then_openai(self):
+        from prep import stt
+        keep = {k: os.environ.get(k) for k in ("STT", "SONIOX_API_KEY", "OPENAI_API_KEY")}
+        try:
+            for env, want in (({"SONIOX_API_KEY": "x", "OPENAI_API_KEY": "y"}, "soniox"), ({"OPENAI_API_KEY": "y"}, "openai"),
+                              ({"SONIOX_API_KEY": "x", "OPENAI_API_KEY": "y", "STT": "openai"}, "openai")):
+                for k in keep:
+                    os.environ.pop(k, None)
+                os.environ.update(env)
+                self.assertEqual(stt.provider(), want, env)
+            for k in keep:
+                os.environ.pop(k, None)
+            self.assertRaises(SystemExit, stt.provider)
+        finally:
+            for k, v in keep.items():
+                os.environ.pop(k, None) if v is None else os.environ.update({k: v})
+
+    def test_whisper_words_get_their_punctuation_back(self):
+        from prep.openai_stt import punctuate
+        words = [{"t": t, "s": i * 300, "e": i * 300 + 250} for i, t in enumerate("so is it Python or bash".split())]
+        out = punctuate(words, [{"text": " So, is it Python"}, {"text": " or... bash?"}])
+        self.assertEqual([w["t"] for w in out], ["So,", "is", "it", "Python", "or...", "bash?"])
+        self.assertEqual(punctuate(words[:1], [{"text": "different"}])[0]["t"], "so")  # no match: the word stays
+
+    def test_words_get_the_speaker_of_their_turn(self):
+        from prep.openai_stt import assign
+        turns = [{"s": 0, "e": 1000, "sp": "1"}, {"s": 1000, "e": 2500, "sp": "2"}, {"s": 3000, "e": 4000, "sp": "1"}]
+        words = [{"t": "a", "s": 100, "e": 400}, {"t": "b", "s": 900, "e": 1400}, {"t": "c", "s": 2600, "e": 2800},
+                 {"t": "d", "s": 3100, "e": 3300}]
+        self.assertEqual([w["sp"] for w in assign(words, turns)], ["1", "2", "2", "1"])
 
 
 if __name__ == "__main__":

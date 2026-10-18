@@ -36,11 +36,13 @@ Do these in order and tell the user briefly what you did. Ask before installing 
    ```
    (Windows: `py -3.14 -m venv .venv` and `.venv\Scripts\pip install -r requirements.txt`.)
 4. **API keys.** `cp .env.example .env` if there's no `.env`. Ask the user to open `.env` themselves and fill in
-   `SONIOX_API_KEY` (transcription, https://soniox.com) and `OPENAI_API_KEY` (reading notes, transcript cleanup,
-   headlines, cover frames), plus `CLIPPER_HOST` (the host's first name, so the guest is detected right).
+   `OPENAI_API_KEY` (transcription, reading notes, transcript cleanup, headlines, cover frames) and `CLIPPER_HOST`
+   (the host's first name, so the guest is detected right). `SONIOX_API_KEY` is optional: Soniox
+   (https://soniox.com) gets names and other languages right more often, and is used instead of OpenAI when set.
    **Never** ask for keys in the chat, never print `.env` or a key, never put keys anywhere but `.env` (it's
    git-ignored). Check without revealing:
    `.venv/bin/python -c "import re;t=open('.env').read();print({k:bool(re.search(k+r'=\S+',t)) for k in ['OPENAI_API_KEY','SONIOX_API_KEY']})"`
+   (only `OPENAI_API_KEY` has to be True)
 5. **Smoke test.** `./clip test && ./clip selftest` (unit tests, then a test clip rendered end to end, ~10 s).
 6. **Their look (optional).** Offer to make `theme.json` from `theme.example.json`: the show's name, an accent colour,
    a logo. The neutral default is fine to start with.
@@ -69,7 +71,8 @@ Other platforms: `publish/README.md` (what their APIs allow, how to add one with
 PLAYBOOK.md            how to make clips (read before making any)
 theme.example.json     a show's look: copy to theme.json (keys documented in clips/clipkit/theme.py)
 clip, clip.cmd         the one command: ./clip (Windows: clip) (no arguments = help)
-prep/                  getting an episode ready: folder, transcription (Soniox), LLM cleanup, name fixes, subtitles;
+prep/                  getting an episode ready: folder, transcription (stt.py: OpenAI or Soniox), LLM cleanup,
+                       name fixes, subtitles;
                        quick.py (./clip quick)
 publish/               optional: uploads finished clips to platforms (youtube.py: Shorts, upload-only)
 clips/                 clipkit/ (the engine: theme, style, brand, fx, angles, render + QA), templates/ (chill, bold,

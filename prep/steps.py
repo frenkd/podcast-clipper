@@ -11,7 +11,8 @@ from .files import video_path
 from .fixes import apply_fixes
 from .llm import arr, integer, llm_json, obj, string
 from .media import extract_audio, probe
-from .soniox import tokens_to_words, transcribe_file, transcribe_long, words_to_cues
+from . import stt
+from .stt import words_to_cues
 from .store import get_project, now, read_json, set_step, source_dir, update_project, work_dir, write_json
 from .subtitles import cues_for_prompt, parse_subtitles
 
@@ -97,7 +98,8 @@ def step_context(pid):
 
 
 def step_transcribe(pid, use_subtitles=None):
-    """Soniox (or the episode's subtitles if they're good) -> work/words.json + work/transcript.json"""
+    """speech to text (Soniox or OpenAI, stt.py; or the episode's subtitles if they're good) -> work/words.json +
+    work/transcript.json"""
     def go(report):
         p = get_project(pid)
         subs = next((f for f in p["files"] if f["kind"] == "subtitles"), None)
@@ -118,15 +120,16 @@ def step_transcribe(pid, use_subtitles=None):
             extract_audio(video, audio)
         cached = read_json(os.path.join(work_dir(pid), "words.json"))
         people = p.get("people") or []
-        words = cached or transcribe_long(
+        source = stt.provider()
+        words = cached or stt.transcribe(
             audio, (p.get("video") or {}).get("duration") or probe(video)["duration"],
             {"topic": p.get("brief") or p["title"], "speakers": ", ".join(people) or None, "text": p.get("brief"),
              "terms": p["glossary"], "language": p.get("language")},
             lambda start, dur, out: extract_audio(audio, out, start, dur), report,
-            parts_path=os.path.join(work_dir(pid), "soniox.parts.json"))
+            parts_path=os.path.join(work_dir(pid), f"{source}.parts.json"))
         write_json(os.path.join(work_dir(pid), "words.json"), words)
-        write_json(transcript_path(pid), {"source": "soniox", "cues": words_to_cues(words), "words": words})
-        update_project(pid, lambda p: p.update(transcriptSource="soniox"))
+        write_json(transcript_path(pid), {"source": source, "cues": words_to_cues(words), "words": words})
+        update_project(pid, lambda p: p.update(transcriptSource=source))
         apply_fixes(pid)
     run_step(pid, "transcribe", go)
 
@@ -160,8 +163,8 @@ def check_host(names, st, host):
 
 
 def step_speakers(pid):
-    """re-diarize without touching the words: one Soniox request for the whole episode, then every existing word gets
-    the speaker of the new words it overlaps (keeps word timings, fixes and clip scripts as they are)"""
+    """re-diarize without touching the words: who talks when, fresh from the speech-to-text service, then every
+    existing word gets the speaker of what it overlaps (keeps word timings, fixes and clip scripts as they are)"""
     def go(report):
         p = get_project(pid)
         audio = os.path.join(work_dir(pid), "audio.opus")
@@ -169,10 +172,10 @@ def step_speakers(pid):
             report("extracting audio")
             extract_audio(video_path(p), audio)
         report("transcribing for speakers")
-        fresh = tokens_to_words(transcribe_file(audio, {"topic": p.get("brief") or p["title"],
-                                                         "speakers": ", ".join(p.get("people") or []) or None,
-                                                         "text": p.get("brief"), "terms": p["glossary"],
-                                                         "language": p.get("language")}))
+        ctx = {"topic": p.get("brief") or p["title"], "speakers": ", ".join(p.get("people") or []) or None,
+               "text": p.get("brief"), "terms": p["glossary"], "language": p.get("language")}
+        fresh = stt.speakers(audio, (p.get("video") or {}).get("duration") or probe(video_path(p))["duration"], ctx,
+                             lambda start, dur, out: extract_audio(audio, out, start, dur))
         wp = os.path.join(work_dir(pid), "words.json")
         words = read_json(wp)
         k = 0
@@ -184,7 +187,7 @@ def step_speakers(pid):
                 w["sp"] = max(near, key=lambda f: min(f["e"], w["e"]) - max(f["s"], w["s"]))["sp"]
         write_json(wp, words)
         tr = read_json(transcript_path(pid))
-        if tr and tr.get("source") == "soniox":
+        if tr and tr.get("source") in ("soniox", "openai"):
             write_json(transcript_path(pid), {**tr, "cues": words_to_cues(words), "words": words})
     run_step(pid, "speakers", go)
 
