@@ -71,35 +71,45 @@ clip never opens mid-thought. Sort them as you go: **animatable** or **conversat
 ## 4. Pick the energy
 
 Clips can be anything from a calm, classy quote to a full meme edit. Match the moment and the show; ask when unsure.
+`clips/templates/` has a working script for each style below (that's what `./clip quick` copies). They're a starter
+kit: mix them, or build something none of them is.
 
-| energy | looks like | parts |
+| style | looks like | parts |
 |---|---|---|
 | **chill** | clean captions, a slow push-in, a soft bed; the conversation does the work | `captions(style="clean")`, `push()`, `bed_soft` |
-| **bold** | caps captions with the spoken word on a plate, zoom punches on the beat, a sticker by the head, a beat | `captions(style="bold")`, `punch()`, `sticker()`, `wobble()`, `bed_beat` |
-| **meme** | one huge word at a time, punches on every line, and the drop: black and white, slow push-in, a big caption, a phonk beat | `captions(style="meme")`, `mono()`, `vignette()`, `meme_text()`, `slam()`, `shake()`, `flash()`, `deep_fry()`, `bed_phonk` |
-| **dramatic** | bold captions, then on the punchline a smash zoom into the face, a shake, red edges, a boom and a big reaction | `snap()`, `shake()`, `red_vignette()`, `flash()`, `meme_text()`, `sfx_impact` |
-| **credits** | the clip plays out, then the last frame freezes, fades to warm film, and a "directed by" card rolls in over a bouncy riff | `faded()`, `credits_card()`, `bed_credits` |
+| **bold** | caps captions with the spoken word on a plate, a sticker by the head at the key moment | `captions(style="bold")`, `sticker()`, `wobble()` |
+| **meme** | one huge word at a time, and the drop: black and white, slow push-in, a big caption, a phonk beat | `captions(style="meme")`, `mono()`, `vignette()`, `meme_text()`, `slam()`, `shake()`, `deep_fry()`, `bed_phonk` |
+| **dramatic** | on the punchline a smash zoom into the face, a shake, red edges, a boom and a big reaction | `snap()`, `shake()`, `red_vignette()`, `flash()`, `sfx_impact` |
+| **credits** | the clip plays out, the last frame freezes into warm film, a "directed by" card rolls in | `faded()`, `credits_card()`, `bed_credits` |
+| **documentary** | letterbox bars, a warm grade, a typed narrator card, a calm drone | `letterbox()`, `faded()`, `doc_card()`, `typed()` |
+| **news** | a BREAKING banner with the headline, a LIVE tag, a ticker of (clearly joking) lines, a sting | `news_banner()`, `ticker()`, `sfx_news` |
+| **rewind** | a VHS rewind over the punchline, then it plays again with its sound | `vhs()`, `sfx_rewind`, `E.tail(s)` |
+| **list** | an explainer card whose items appear as they're said | `list_board()`, `timeline()`, `place_board()` |
+| **chart** | bars that grow when their numbers are said (one number counts up) | `bar_chart()`, `counter()` |
+| **versus** | two sides as crowds of plain figures filling in, one black-and-white beat | `versus_board()`, `when_said()` |
 
-`clips/templates/` has a working script for each (that's what `./clip quick` copies). Mix freely: a chill clip with
-one meme drop on the punchline is often the funniest version. Two rules for the loud end:
+A chill clip with one meme drop on the punchline is often the funniest version. For the loud end:
 - **One drop per clip.** The deep-fry, the shake, the "SIGMA RULE #47", the smash zoom, the credits: once, on the
-  payoff, reads as a joke. Five times reads as noise. The drop holds the last frame on purpose, after the voice.
+  payoff, reads as a joke. Five times reads as noise. A drop may hold the last frame on purpose, after the voice.
 - **Deliberate moves pass QA.** `snap()`, `shake()` and `punch()` tell the CROP JUMP check they're on purpose; for a
   move of your own, call `deliberate(t0, t1)`.
-- **Tease situations, not people.** Nothing mean or tasteless about the guest, other people or groups.
+- **Boards go over the shot, off the face.** `place_board()` picks one spot per clip (under the chin, else above the
+  head) and keeps it; time each part to its word with `when_said()` / `timeline()`.
+- **Tease situations, not people.** Nothing mean or tasteless about the guest, other people or groups. Made-up text
+  (a news ticker, a narrator line) is listed for the user at finals.
 
 ## 5. Build, render, review
 
 **The fast path.** One clip from a time range, from a template, rendered as a preview:
 
 ```bash
-./clip quick <id> 12:30-13:05 --style chill|bold|meme|dramatic|credits [--headline "…"] [--sticker "…"]
-                                [--meme "…"] [--drama "…"] [--credit "…"]
+./clip quick <id> 12:30-13:05 --style <one of the eleven in §4> [--headline "…"] [--sticker "…"]
+                                [--meme "…"] [--drama "…"] [--credit "…"] [--doc-line "…"]
 ```
 
-With an OpenAI key it writes the headline (and the sticker, the drop's caption or the reaction) itself; `credits`
-names the host unless you pass `--credit`. The result is a normal
-script in `projects/<id>/scripts/`: edit it like any other.
+With an OpenAI key it writes the headline and the rest (the sticker, the drop's caption, the ticker, the board and
+the words each part appears on) itself; `credits` names whoever is on screen unless you pass `--credit`. The result
+is a normal script in `projects/<id>/scripts/`: edit it like any other.
 
 **The full path.** Scripts go in `projects/<id>/scripts/NN_name.py` (shared helpers: `_name.py`). Start from a
 template; `from clipkit import *` gives you everything (summary at the end).
@@ -214,7 +224,9 @@ clip), never change meaning. Facts and numbers on screen must be true.
   `ON_ACCENT`, `TEXT`, `INK`, `THEME`; fonts `F_BLACK`, `F_XBOLD`, `F_BOLD`, `F_MED`, `F_REG`, `F_MONO`, `F_MONO_B`,
   `F_MONO_XB`.
 - Effects (`clipkit/fx.py`): `punch`, `push`, `shake`, `snap`, `deliberate`, `mono`, `deep_fry`, `faded`, `vignette`,
-  `red_vignette`, `flash`, `letterbox`, `meme_text`, `sticker`, `credits_card`, `wobble`, `slam`.
+  `red_vignette`, `flash`, `letterbox`, `meme_text`, `sticker`, `credits_card`, `wobble`, `slam`, `typed`, `doc_card`,
+  `news_banner`, `ticker`, `vhs`. Boards (`clipkit/boards.py`): `list_board`, `bar_chart`, `counter`, `versus_board`,
+  `place_board`, `when_said`, `timeline`.
 - `text_line`, `text_block`, `emoji`, `rounded`, `asset`; easing `ease_out`, `ease_in_out`, `clamp01`, `pop`;
   `place(canvas, im, x, y, scale, alpha, rot, anchor, over=, clip_ok=)`.
 - `intro(c, text, face, t)`, `captions(c, CHUNKS, t, split, style=)` (or `cap(chunk, t)`), `accent(…)`,

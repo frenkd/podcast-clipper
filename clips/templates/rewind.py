@@ -8,8 +8,8 @@ NAME = "$name"
 E = Edit(tight(($start, $end)))
 # the opening line (None: no headline)
 HEADLINE = $headline
-# seconds of the end that rewind and play again (within the last piece of the edit)
-REPLAY = min(2.2, E.pieces[-1][1] - E.pieces[-1][0])
+# seconds of the end that rewind and play again
+REPLAY = min(2.2, E.dur - 1.0)
 REWIND = 0.8
 CHUNKS = chunk_words(E.words(), 3, 16)
 KEPT = {}  # output frame -> a half-size copy of the shot, for the rewind and the replay
@@ -46,8 +46,7 @@ def draw(t, fr, face):
 
 def sound(mix):
     mix.add(E.dur, sfx_rewind(REWIND), 0.6)
-    a, b = E.pieces[-1]
-    mix.add(E.dur + REWIND, edit_audio(Edit([(b - REPLAY, b)])), 1.0, track="voice")
+    mix.add(E.dur + REWIND, edit_audio(E.tail(REPLAY)), 1.0, track="voice")  # the same seconds, sound and all
 
 
 if __name__ == "__main__":

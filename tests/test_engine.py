@@ -212,6 +212,9 @@ class Edits(unittest.TestCase):
         self.assertIsNone(e.out_t(15))
         self.assertAlmostEqual(e.dur, 3.5)
         self.assertEqual((e.focus, e.hold), ("Ana", 0.5))
+        tail = e.tail(2.0)  # the last 2 s, across the two pieces
+        self.assertEqual(tail.pieces, [(11.5, 12.0), (20.0, 21.5)])
+        self.assertAlmostEqual(tail.dur, 2.0)
 
 
 class Encoding(unittest.TestCase):

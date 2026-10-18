@@ -17,7 +17,7 @@ changed. Be brief with the user: what you made, what you fixed, one question (PL
 **Clip a podcast episode** into short vertical clips: it transcribes the episode, finds the funny and surprising
 moments, and makes clips with a headline, captions, effects and an end card, from calm and classy to full meme edit
 (PLAYBOOK §4). By default 7 candidates, the 5 best polished and ranked, the user picks 3. The fastest start is one
-clip from a time range: `./clip quick <episode> 12:30-13:05 --style bold`. Along the way: a **cleaned transcript**,
+clip from a time range: `./clip quick <episode> 12:30-13:05 --style bold` (eleven styles: PLAYBOOK §4). Along the way: a **cleaned transcript**,
 **subtitles** (.srt), **chapters** and a **description draft**. Optionally it **uploads** clips to YouTube Shorts
 (`publish/`). Then offer: first-time setup if needed, or "give me the episode video and any notes you have".
 
@@ -42,7 +42,7 @@ Do these in order and tell the user briefly what you did. Ask before installing 
    OpenAI (`STT=soniox|elevenlabs|openai` picks one when several are).
    **Never** ask for keys in the chat, never print `.env` or a key, never put keys anywhere but `.env` (it's
    git-ignored). Check without revealing:
-   `.venv/bin/python -c "import re;t=open('.env').read();print({k:bool(re.search(k+r'=\S+',t)) for k in ['OPENAI_API_KEY','SONIOX_API_KEY']})"`
+   `.venv/bin/python -c "import re;t=open('.env').read();print({k:bool(re.search(k+r'=\S+',t)) for k in ['OPENAI_API_KEY','ELEVENLABS_API_KEY','SONIOX_API_KEY']})"`
    (only `OPENAI_API_KEY` has to be True)
 5. **Smoke test.** `./clip test && ./clip selftest` (unit tests, then a test clip rendered end to end, ~10 s).
 6. **Their look (optional).** Offer to make `theme.json` from `theme.example.json`: the show's name, an accent colour,
@@ -72,12 +72,11 @@ Other platforms: `publish/README.md` (what their APIs allow, how to add one with
 PLAYBOOK.md            how to make clips (read before making any)
 theme.example.json     a show's look: copy to theme.json (keys documented in clips/clipkit/theme.py)
 clip, clip.cmd         the one command: ./clip (Windows: clip) (no arguments = help)
-prep/                  getting an episode ready: folder, transcription (stt.py: OpenAI, ElevenLabs or Soniox), LLM cleanup,
-                       name fixes, subtitles;
-                       quick.py (./clip quick)
+prep/                  getting an episode ready: folder, transcription (stt.py: OpenAI, ElevenLabs or Soniox),
+                       LLM cleanup, name fixes, subtitles; quick.py (./clip quick)
 publish/               optional: uploads finished clips to platforms (youtube.py: Shorts, upload-only)
-clips/                 clipkit/ (the engine: theme, style, brand, fx, angles, render + QA), templates/ (chill, bold,
-                       meme, dramatic, credits), run.py, selftest.py, review.py
+clips/                 clipkit/ (the engine: theme, style, brand, fx, boards, angles, render + QA), templates/
+                       (the eleven ./clip quick styles), run.py, selftest.py, review.py
 tests/                 unit tests (./clip test)
 assets/                fonts (Inter, JetBrains Mono, both OFL), YuNet face model
 projects/<id>/         one episode: source/ (video + notes), work/ (transcripts, caches), scripts/, preview/, final/,

@@ -39,6 +39,14 @@ class Edit:
         a, b = self.pieces[self.piece_at(t)]
         return a + t - self.offsets[self.piece_at(t)]
 
+    def tail(self, seconds):
+        """an Edit of just the last `seconds` of this one (the same source ranges, across pieces)"""
+        start, out = self.dur - seconds, []
+        for (a, b), o in zip(self.pieces, self.offsets):
+            if o + (b - a) > start:
+                out.append((a + max(0.0, start - o), b))
+        return Edit(out, self.focus, self.hold, self.who)
+
     def piece_at(self, t):
         for i, ((a, b), o) in enumerate(zip(self.pieces, self.offsets)):
             if t < o + (b - a):

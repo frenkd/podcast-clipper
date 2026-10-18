@@ -24,19 +24,25 @@ It shows you previews, you say what to change, and the finals land in `projects/
 Know the moment already? One command makes one clip:
 
 ```bash
-./clip quick my-episode 12:30-13:05 --style meme
+./clip quick my-episode 12:30-13:05 --style news
 ```
 
-| style | what you get |
-|---|---|
-| `chill` | clean captions, a slow push-in, a soft beat |
-| `bold` | caps captions with the spoken word on a plate, zoom punches, a sticker |
-| `meme` | one huge word at a time, then the black-and-white "sigma" drop with a phonk beat |
-| `dramatic` | on the punchline: a smash zoom into the face, a shake, a boom and a big reaction |
-| `credits` | the clip plays out, freezes, and a "directed by" card rolls in over a bouncy riff |
+Eleven starting points, from calm to unhinged:
 
-It writes a short script in `projects/my-episode/scripts/` and renders a preview. The script is yours: change a
-word, a colour, the timing, and render again. Try the same moment in a few styles to feel the range.
+- **Everyday:** `chill` (clean captions, a slow push-in) and `bold` (caps captions, the spoken word on a plate, a
+  sticker).
+- **Meme formats:** `meme` (one huge word at a time, then the black-and-white "sigma" drop), `dramatic` (a smash zoom
+  into the face), `credits` (freeze, "directed by"), `documentary` (letterbox and a narrator card), `news` (a
+  BREAKING banner and a joke ticker) and `rewind` (a VHS rewind, then the punchline again).
+- **Explainers:** `list`, `chart` and `versus`, boards that build up in sync with what's said.
+
+It writes a short script in `projects/my-episode/scripts/` and renders a preview; with an OpenAI key it also writes
+the headline and the board for you. The script is yours: change a word, a colour, the timing, and render again.
+
+These are a starter kit, not the menu. Each clip is plain Python on a small engine that handles the hard parts
+(following the speaker, keeping text off faces and out from under the apps' buttons, timing everything to the
+words), so an original format is a script away. Ask the agent for one: "make this one a cooking show", "turn the
+argument into a boxing match".
 
 ## Make it yours
 
