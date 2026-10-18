@@ -20,7 +20,7 @@ cmd = ["ffmpeg", "-v", "error", "-ss", str(a.t0)] + (["-t", str(a.t1 - a.t0)] if
 raw = subprocess.check_output(cmd)
 n, cols = len(raw) // (w * h * 3), 8
 im = Image.new("RGB", (cols * w, max(1, math.ceil(n / cols)) * (h + 22)), (40, 40, 40))
-d, f = ImageDraw.Draw(im), ImageFont.truetype(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "fonts", "Iosevka-Regular.ttf"), 16)
+d, f = ImageDraw.Draw(im), ImageFont.truetype(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "fonts", "JetBrainsMono-Regular.ttf"), 16)
 for i in range(n):
     x, y = (i % cols) * w, (i // cols) * (h + 22)
     im.paste(Image.frombytes("RGB", (w, h), raw[i * w * h * 3:(i + 1) * w * h * 3]), (x, y + 22))
