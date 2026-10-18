@@ -50,6 +50,9 @@ def render(name, edit, draw, sound=None, tail=1.8, bed=None, bed_gain=0.2, duck=
 
     state.CLIP_SPEAKER = _speaker_name(edit)
     state.HOOK_SPEAKER = _speaker_name(edit, until=2.6)
+    track_edit(edit)  # the shots, checked against whose mouth moves: the names follow who's on screen
+    state.CLIP_SPEAKER = _on_screen_name() or state.CLIP_SPEAKER
+    state.HOOK_SPEAKER = _on_screen_name(until=2.6) or state.HOOK_SPEAKER
     # dry run over the first seconds: where is the face while the hook is up? (fixes the hook's spot once)
     tr = track_edit(edit)[0]
     state.PROBE, state.HOOK_SLOTS, state.CAPTIONS_AFTER = {}, {}, 0.0
@@ -154,6 +157,26 @@ def _speaker_name(edit, until=None):
         talk[str(w["sp"])] = talk.get(str(w["sp"]), 0) + w["e"] - w["s"]
     sp = max(talk, key=talk.get) if talk else None
     name = names.get(sp) or (sp if sp and not sp.isdigit() else "")  # Edit(who=…) gives names directly
+    return "" if not name or name.startswith("speaker ") or name in ("host", "Unknown") else name
+
+
+def _on_screen_name(until=None):
+    """the name of whoever is shown talking most (track_edit's shots, mode "on"), in the first `until` seconds"""
+    from .project import SPEAKER_NAMES
+    names = dict(SPEAKER_NAMES)
+    try:
+        from .angles import load
+        names = {**{k: v["name"] for k, v in load()["speakers"].items()}, **names}
+    except Exception:
+        pass
+    count = {}
+    for i, info in (state.SHOT_INFO or {}).items():
+        if (until is None or i < until * FPS) and info.get("mode") == "on" and info.get("speaker"):
+            count[str(info["speaker"])] = count.get(str(info["speaker"]), 0) + 1
+    if not count:
+        return ""
+    sp = max(count, key=count.get)
+    name = names.get(sp) or (sp if not sp.isdigit() else "")
     return "" if not name or name.startswith("speaker ") or name in ("host", "Unknown") else name
 
 

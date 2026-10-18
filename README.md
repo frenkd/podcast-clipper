@@ -63,8 +63,8 @@ Every clip follows it: colours, fonts, caption style, logo, end card. All the op
   ([publish/](publish/README.md)).
 - **No copyright trouble:** all music and sound effects are generated in code.
 
-Transcription uses OpenAI by default; add a [Soniox](https://soniox.com) key to `.env` for better accuracy with
-names and non-English shows. Runs on macOS, Linux and Windows.
+Transcription uses OpenAI by default; add an [ElevenLabs](https://elevenlabs.io) or [Soniox](https://soniox.com) key
+to `.env` for better accuracy with names, speakers and non-English shows. Runs on macOS, Linux and Windows.
 
 ## How it's built
 

@@ -37,8 +37,9 @@ Do these in order and tell the user briefly what you did. Ask before installing 
    (Windows: `py -3.14 -m venv .venv` and `.venv\Scripts\pip install -r requirements.txt`.)
 4. **API keys.** `cp .env.example .env` if there's no `.env`. Ask the user to open `.env` themselves and fill in
    `OPENAI_API_KEY` (transcription, reading notes, transcript cleanup, headlines, cover frames) and `CLIPPER_HOST`
-   (the host's first name, so the guest is detected right). `SONIOX_API_KEY` is optional: Soniox
-   (https://soniox.com) gets names and other languages right more often, and is used instead of OpenAI when set.
+   (the host's first name, so the guest is detected right). Optional, for transcription: `ELEVENLABS_API_KEY` or
+   `SONIOX_API_KEY` get names, speakers and other languages right more often; whichever is set is used instead of
+   OpenAI (`STT=soniox|elevenlabs|openai` picks one when several are).
    **Never** ask for keys in the chat, never print `.env` or a key, never put keys anywhere but `.env` (it's
    git-ignored). Check without revealing:
    `.venv/bin/python -c "import re;t=open('.env').read();print({k:bool(re.search(k+r'=\S+',t)) for k in ['OPENAI_API_KEY','SONIOX_API_KEY']})"`
@@ -71,7 +72,7 @@ Other platforms: `publish/README.md` (what their APIs allow, how to add one with
 PLAYBOOK.md            how to make clips (read before making any)
 theme.example.json     a show's look: copy to theme.json (keys documented in clips/clipkit/theme.py)
 clip, clip.cmd         the one command: ./clip (Windows: clip) (no arguments = help)
-prep/                  getting an episode ready: folder, transcription (stt.py: OpenAI or Soniox), LLM cleanup,
+prep/                  getting an episode ready: folder, transcription (stt.py: OpenAI, ElevenLabs or Soniox), LLM cleanup,
                        name fixes, subtitles;
                        quick.py (./clip quick)
 publish/               optional: uploads finished clips to platforms (youtube.py: Shorts, upload-only)

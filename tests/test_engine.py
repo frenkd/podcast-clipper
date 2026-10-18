@@ -304,5 +304,47 @@ class Fonts(unittest.TestCase):
             draw.emoji.cache_clear()
 
 
+class Boards(unittest.TestCase):
+    def test_boards_keep_their_size_while_they_build(self):
+        from clipkit.boards import bar_chart, list_board, versus_board
+        items = ["Permits", "Wiring", "The roof"]
+        sizes = {list_board("Needs a permit", items, [k, k - 0.5, k - 1]).size for k in (0.2, 1.0, 2.0)}
+        self.assertEqual(len(sizes), 1)
+        sizes = {versus_board("Agent", "Human", 4, 30, k, k).size for k in (0.0, 0.5, 1.0)}
+        self.assertEqual(len(sizes), 1)
+        self.assertTrue(bar_chart("Cost", [("agent", 20), ("developer", 2000)], [1, 1], " $").getbbox())
+        self.assertTrue(bar_chart("Places", [("jurisdictions", 20000)], [0.5]).getbbox())  # one bar: a counter
+
+    def test_when_said_matches_accents_and_order(self):
+        from clipkit.boards import when_said
+
+        class E:
+            dur = 5.0
+
+            def words(self):
+                return [{"t": "Človek,", "s": 1.0}, {"t": "agent", "s": 2.0}, {"t": "človeka", "s": 3.0}]
+        self.assertEqual(when_said(E(), "človek", 0.0), 1.0)
+        self.assertEqual(when_said(E(), "clovek", 1.5), 3.0)
+        self.assertIsNone(when_said(E(), "robot", 0.0))
+
+    def test_mouth_check_needs_a_clear_majority(self):
+        from clipkit import angles, video
+
+        class E:
+            def src_t(self, t):
+                return 100.0 + t
+        slots = [{"x": 100, "y": 100, "size": 50, "speaker": "1"}, {"x": 900, "y": 100, "size": 50, "speaker": "2"}]
+        real = angles._mouth_activity
+        try:
+            for acts, want in (([0.3, 1.4], 1), ([1.2, 1.3], None), ([None, 1.4], None)):
+                video._MOUTH.clear()
+                angles._mouth_activity = lambda t, s, a=acts: list(a)
+                got = video._mouth_check(E(), list(range(90)), slots, slots[0])
+                self.assertEqual(got, slots[want] if want is not None else None, acts)
+        finally:
+            angles._mouth_activity = real
+            video._MOUTH.clear()
+
+
 if __name__ == "__main__":
     unittest.main()

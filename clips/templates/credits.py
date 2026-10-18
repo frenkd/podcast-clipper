@@ -8,7 +8,7 @@ NAME = "$name"
 E = Edit(tight(($start, $end)))
 # the opening line (None: no headline)
 HEADLINE = $headline
-# the credits card: a small line over a big name
+# the credits card: a small line over a big name (None: whoever is on screen, else the show's name)
 CREDIT_TOP = "Directed by"
 CREDIT = $credit
 # seconds of freeze and credits after the last word
@@ -30,7 +30,8 @@ def draw(t, fr, face):
         if k > 0.45:
             a = ease_out((k - 0.45) / 0.5)
             c.alpha_composite(fade(W, 760, INK, 0.0, 0.7 * a), (0, H - 760))
-            place(c, credits_card(CREDIT_TOP, CREDIT, 92), W / 2, H * 0.66, 1, a)
+            name = CREDIT or speaker() or THEME["name"] or "nobody, apparently"
+            place(c, credits_card(CREDIT_TOP, name, 92), W / 2, H * 0.66, 1, a)
         return c
     end_card(k - FREEZE, faded(c))
     return c

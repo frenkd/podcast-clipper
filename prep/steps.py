@@ -187,7 +187,7 @@ def step_speakers(pid):
                 w["sp"] = max(near, key=lambda f: min(f["e"], w["e"]) - max(f["s"], w["s"]))["sp"]
         write_json(wp, words)
         tr = read_json(transcript_path(pid))
-        if tr and tr.get("source") in ("soniox", "openai"):
+        if tr and tr.get("source") in stt.PROVIDERS:
             write_json(transcript_path(pid), {**tr, "cues": words_to_cues(words), "words": words})
     run_step(pid, "speakers", go)
 

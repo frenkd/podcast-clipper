@@ -88,6 +88,40 @@ def _focus_timeline(edit, n, data=None):
     return out
 
 
+MOUTH_RATIO, MOUTH_MIN, MOUTH_SAMPLES = 1.2, 0.45, 8
+_MOUTH = {}
+
+
+def _mouth_check(edit, idx, slots, target):
+    """In a wide shot: the seat whose mouth moves most at most moments while the shot runs (and clearly more than
+    `target`'s on average), if that isn't `target`, the seat of whoever the transcript says is talking. Diarization
+    sometimes merges two voices into one speaker id; the picture doesn't lie. None: the transcript's pick stands
+    (or there's too little to go on)."""
+    from .angles import _mouth_activity
+    if len(idx) < FPS or target not in slots:  # under a second: not worth the look
+        return None
+    picks = np.linspace(idx[0] + FPS // 4, idx[-1] - FPS // 4, MOUTH_SAMPLES).astype(int)
+    acts = []
+    for i in picks:
+        t = round(edit.src_t(i / FPS), 2)
+        key = (t, tuple((round(s["x"]), round(s["y"])) for s in slots))
+        if key not in _MOUTH:
+            _MOUTH[key] = _mouth_activity(t, slots)
+        a = _MOUTH[key]
+        if a and sum(v is not None for v in a) >= 2:
+            acts.append(a)
+    if len(acts) < 3:
+        return None
+    wins = [max(range(len(slots)), key=lambda k: a[k] if a[k] is not None else -1.0) for a in acts]
+    best = max(set(wins), key=wins.count)
+    mean = lambda k: (lambda v: sum(v) / len(v) if v else 0.0)([a[k] for a in acts if a[k] is not None])
+    me = slots.index(target)
+    if best != me and wins.count(best) > len(acts) / 2 and mean(best) >= MOUTH_MIN and \
+            mean(best) >= MOUTH_RATIO * max(mean(me), 0.01):
+        return slots[best]
+    return None
+
+
 REFRAME_MIN = 1.5  # s: a wide shot is re-cut onto whoever talks when each part would last at least this long
 
 
@@ -168,6 +202,11 @@ def track_edit(edit):
             mine = [s for s in ang["slots"] if s.get("speaker") in who_names and s.get("confidence", 1.0) >= MIN_CONF]
             target = mine[0] if mine else max(ang["slots"], key=lambda s: s["size"])
             mode = "on" if mine else "away"
+        if ang and len(ang["slots"]) > 1 and edit.focus is None and not edit.who:
+            talker = _mouth_check(edit, idx, ang["slots"], target)  # the transcript's speakers can be wrong
+            if talker is not None:
+                target, mode = talker, "on"
+                who = talker.get("speaker") or who
         info[int(sid)] = {"angle": ang["id"] if ang else None, "speaker": who, "mode": mode,
                           "wide": bool(ang and len(ang["slots"]) > 1)}
         pts = []
@@ -278,15 +317,15 @@ def crop(fr, face, out_w, out_h, zoom=1.0, face_y=0.36, face_x=0.5, dx=0.0, dy=0
     return cv2.warpAffine(fr, M, (out_w, out_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
 
 
-def frame_canvas(fr, face, split=0.0, band=BAND, zoom=1.0, face_y=0.36):
+def frame_canvas(fr, face, split=0.0, band=BAND, zoom=1.0, face_y=0.36, layout=None):
     """The usual base of a clip frame: the video full-frame (split=0) easing into a band at the top with a panel below
     (split=1, video bottom at y=band) for a board. The panel is the same shot, blurred and darkened, so the frame never
     looks empty under the board (the apps' captions sit down there anyway). Start full-frame; split only while the
-    panel has content. -> RGBA canvas"""
+    panel has content. layout: "overlay" or "split" for this clip (default: the episode's). -> RGBA canvas"""
     from PIL import Image, ImageFilter
     from .project import H, LAYOUT, W
     from .style import fade
-    if LAYOUT != "split":  # overlay: the shot stays whole; the face eases up a little and the lower part darkens
+    if (layout or LAYOUT) != "split":  # overlay: the shot stays whole; the face eases up a little and the lower part darkens
         c = Image.fromarray(crop(fr, face, W, H, zoom=zoom, face_y=face_y - 0.07 * split)).convert("RGBA")
         if split > 0:
             c.alpha_composite(fade(W, 1000, (10, 10, 12), 0.0, 0.82 * split), (0, H - 1000))

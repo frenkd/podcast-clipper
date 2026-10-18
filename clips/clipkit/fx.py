@@ -155,16 +155,37 @@ def slam(t, t0, d=0.22, big=1.8):
 
 
 def faded(im, k=1.0, seed=0):
-    """a warm, faded film look (the freeze frame before the credits): softer contrast, a sepia cast, some grain"""
+    """a warm, faded film look (the freeze frame before the credits, the documentary grade): softer contrast and
+    colour, a sepia cast, some grain. k: 0..1. Colour, contrast and tint are one 3x4 matrix (cv2.transform) and the
+    grain is two saturating adds, so it costs a few ms a frame."""
+    import cv2
     k = clamp01(k)
     if k <= 0:
         return im
-    rgb = im.convert("RGB")
-    a = np.asarray(ImageEnhance.Contrast(ImageEnhance.Color(rgb).enhance(0.45)).enhance(0.85)).astype(np.float32)
-    a = a * np.array([1.06, 0.98, 0.84]) + np.array([14, 8, 0])
-    a += np.random.default_rng(seed).normal(0, 7, a.shape[:2])[..., None]
-    out = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8)).convert("RGBA")
-    return Image.blend(im.convert("RGBA"), out, k)
+    a = np.asarray(im.convert("RGB"))
+    s_, c_ = 0.55 * k, 1 - 0.15 * k                                   # how much colour goes, contrast kept
+    lum = np.array([0.299, 0.587, 0.114], np.float32)
+    m = (1 - s_) * np.eye(3, dtype=np.float32) + s_ * np.tile(lum, (3, 1))
+    tint = 1 + k * np.array([0.06, -0.02, -0.16], np.float32)
+    M = np.zeros((3, 4), np.float32)
+    M[:, :3] = (tint[:, None] * c_) * m
+    M[:, 3] = tint * 128 * (1 - c_) + k * np.array([14, 8, 0], np.float32)
+    x = cv2.transform(a, M)
+    up, down = _grain(a.shape[0], a.shape[1], seed % 6, round(k, 1))
+    x = cv2.subtract(cv2.add(x, up), down)
+    out = Image.fromarray(x).convert("RGBA")
+    if im.mode == "RGBA":
+        out.putalpha(im.split()[3])
+    return out
+
+
+@functools.lru_cache(24)
+def _grain(h, w, i, k=1.0):
+    """six pre-made film-grain frames as (add, subtract) uint8 planes (a fresh one per frame was most of the cost)"""
+    g = np.random.default_rng(100 + i).normal(0, 7 * k, (h, w)).astype(np.float32)
+    up = np.clip(g, 0, 255).astype(np.uint8)
+    down = np.clip(-g, 0, 255).astype(np.uint8)
+    return np.dstack([up] * 3), np.dstack([down] * 3)
 
 
 @functools.lru_cache(64)
@@ -199,3 +220,99 @@ def snap(t, t0, z0=1.0, z1=1.9, d=0.12):
     """the dramatic zoom: from z0 to z1 in d seconds at t0, then holding (multiply into crop()'s zoom)"""
     deliberate(t0, t0 + d)
     return z0 + (z1 - z0) * ease_out(clamp01((t - t0) / d))
+
+
+# ---- documentary, news, rewind
+
+def typed(text, k):
+    """the first part of text, as if typed out (k: 0..1)"""
+    return text[:int(round(len(text) * clamp01(k)))]
+
+
+@functools.lru_cache(128)
+def doc_card(top, line, size=60):
+    """a documentary caption: a small spaced-out label over a quiet serif-less line, left-aligned, no box"""
+    from .project import F_MED, F_MONO_B
+    a = text_line(top.upper(), F_MONO_B, int(size * 0.7), (230, 225, 210), 3)
+    b = text_block(line, F_MED, size, (255, 255, 255), max_w=860, align="left", leading=1.15, stroke=3) if line else None
+    w = max(a.width, b.width if b else 0)
+    out = Image.new("RGBA", (w, a.height + (int(size * 0.35) + b.height if b else 0)))
+    out.alpha_composite(a, (0, 0))
+    if b:
+        out.alpha_composite(b, (0, a.height + int(size * 0.35)))
+    return out
+
+
+def news_banner(c, headline, t, t0=0.3, label="BREAKING", y=None, red=(205, 25, 30)):
+    """the breaking-news lower third (in place): a red label tab and a white bar with the headline, sliding in"""
+    from .project import F_BLACK, F_XBOLD
+    k = ease_out(clamp01((t - t0) / 0.35))
+    if k <= 0:
+        return c
+    y = y or int(H * 0.60)
+    lab = text_line(label, F_BLACK, 44, (255, 255, 255))
+    head = text_block(headline.upper(), F_XBOLD, 46, (14, 14, 16), max_w=W - 120, align="left", leading=1.05)
+    bar_h = head.height + 36
+    d = ImageDraw.Draw(c)
+    x0 = int(-W * (1 - k))
+    d.rectangle((x0, y, x0 + lab.width + 48, y + lab.height + 24), fill=red + (255,))
+    c.alpha_composite(lab, (x0 + 24, y + 12))
+    d.rectangle((x0, y + lab.height + 24, x0 + W, y + lab.height + 24 + bar_h), fill=(250, 250, 250, 255))
+    c.alpha_composite(head, (x0 + 28, y + lab.height + 24 + 18))
+    return c
+
+
+def ticker(c, items, t, y=None, speed=180, t0=0.6):
+    """a scrolling news ticker along the bottom of the banner (in place): items separated by blocks"""
+    if t < t0 or not items:
+        return c
+    y = y or int(H * 0.60) + 230
+    strip = _ticker_strip(tuple(items))
+    h = strip.height + 16
+    ImageDraw.Draw(c).rectangle((0, y, W, y + h), fill=(14, 14, 16, 235))
+    off = int((t - t0) * speed) % strip.width
+    for x in (-off, strip.width - off):
+        if x < W:
+            c.alpha_composite(strip.crop((max(0, -x), 0, min(strip.width, W - x), strip.height)), (max(0, x), y + 8))
+    return c
+
+
+@functools.lru_cache(16)
+def _ticker_strip(items):
+    from .project import F_BOLD
+    parts = []
+    for it in items:
+        parts += [text_line(it.upper(), F_BOLD, 34, (255, 255, 255)), Image.new("RGBA", (60, 1))]
+    w = sum(p.width for p in parts)
+    out = Image.new("RGBA", (max(W, w), max(p.height for p in parts)))
+    x = 0
+    for p in parts:
+        if p.height > 1:
+            out.alpha_composite(p, (x, 0))
+            ImageDraw.Draw(out).rectangle((x + p.width + 22, out.height // 2 - 6, x + p.width + 34, out.height // 2 + 6),
+                                          fill=(205, 25, 30, 255))
+        x += p.width
+    return out
+
+
+def vhs(im, k=1.0, seed=0, osd=None):
+    """a VHS look: soft, colour fringes, scanlines, a rolling noise band, and an on-screen label like "◀◀ REWIND"
+    (k: strength 0..1)"""
+    from .project import F_MONO_B
+    k = clamp01(k)
+    rgb = im.convert("RGB")
+    small = rgb.resize((W // 3, H // 3), Image.BILINEAR).resize(rgb.size, Image.BILINEAR)
+    a = np.asarray(small).astype(np.int16)
+    s = int(10 * k)
+    if s:
+        a[:, s:, 0] = a[:, :-s, 0]
+        a[:, :-s, 2] = a[:, s:, 2]
+    a[::4] = (a[::4] * (1 - 0.25 * k)).astype(np.int16)
+    rng = np.random.default_rng(seed)
+    y = int(rng.integers(0, H - 80))
+    a[y:y + 60] = np.clip(a[y:y + 60] + rng.normal(0, 60 * k, (60, W, 1)), 0, 255).astype(np.int16)
+    out = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8)).convert("RGBA")
+    if osd:
+        lab = text_line(osd, F_MONO_B, 64, (255, 255, 255), 4)
+        out.alpha_composite(lab, (70, 300))
+    return out

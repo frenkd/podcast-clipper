@@ -124,9 +124,10 @@ class CpuBudget(unittest.TestCase):
 class SpeechToText(unittest.TestCase):
     def test_provider_prefers_soniox_then_openai(self):
         from prep import stt
-        keep = {k: os.environ.get(k) for k in ("STT", "SONIOX_API_KEY", "OPENAI_API_KEY")}
+        keep = {k: os.environ.get(k) for k in ("STT", "SONIOX_API_KEY", "ELEVENLABS_API_KEY", "OPENAI_API_KEY")}
         try:
             for env, want in (({"SONIOX_API_KEY": "x", "OPENAI_API_KEY": "y"}, "soniox"), ({"OPENAI_API_KEY": "y"}, "openai"),
+                              ({"ELEVENLABS_API_KEY": "z", "OPENAI_API_KEY": "y"}, "elevenlabs"),
                               ({"SONIOX_API_KEY": "x", "OPENAI_API_KEY": "y", "STT": "openai"}, "openai")):
                 for k in keep:
                     os.environ.pop(k, None)
@@ -134,6 +135,8 @@ class SpeechToText(unittest.TestCase):
                 self.assertEqual(stt.provider(), want, env)
             for k in keep:
                 os.environ.pop(k, None)
+            self.assertRaises(SystemExit, stt.provider)
+            os.environ.update(STT="elevenlabs", OPENAI_API_KEY="y")  # named, but its key is missing
             self.assertRaises(SystemExit, stt.provider)
         finally:
             for k, v in keep.items():
@@ -152,6 +155,18 @@ class SpeechToText(unittest.TestCase):
         words = [{"t": "a", "s": 100, "e": 400}, {"t": "b", "s": 900, "e": 1400}, {"t": "c", "s": 2600, "e": 2800},
                  {"t": "d", "s": 3100, "e": 3300}]
         self.assertEqual([w["sp"] for w in assign(words, turns)], ["1", "2", "2", "1"])
+
+
+    def test_elevenlabs_words(self):
+        from prep.elevenlabs_stt import keyterms, to_words
+        r = {"words": [{"text": "Hello,", "type": "word", "start": 0.1, "end": 0.4, "speaker_id": "speaker_0"},
+                       {"text": " ", "type": "spacing", "start": 0.4, "end": 0.45, "speaker_id": "speaker_0"},
+                       {"text": "(laughs)", "type": "audio_event", "start": 0.5, "end": 0.9, "speaker_id": "speaker_1"},
+                       {"text": "hi!", "type": "word", "start": 1.0, "end": 1.2, "speaker_id": "speaker_1"}]}
+        self.assertEqual(to_words(r, 1000), [{"t": "Hello,", "s": 1100, "e": 1400, "sp": "1"},
+                                             {"t": "hi!", "s": 2000, "e": 2200, "sp": "2"}])
+        self.assertEqual(keyterms(["PostgreSQL", "x" * 60, "a b c d e f", "[bad]", "PostgreSQL", " Hugging Face "]),
+                         ["PostgreSQL", "Hugging Face"])
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@
   brand    intro() headline, cap() (captions), end_card()
   audio    Mix, synthesized sfx_* and bed_*
   fx       motion and effects for louder clips: punch/push/shake, mono, deep_fry, flash, meme_text, sticker
+  boards   explainer boards that build up with the speech: list_board, bar_chart, versus_board, when_said
   render   render(): encode + cover + <name>.qa.txt / .events.jpg / .grid.jpg (preview/ or final/)
 """
 import functools, math, re
@@ -24,15 +25,16 @@ from .words import Edit, tight, all_words, chunk_words, clean_word, active
 from .video import BAND, crop, frame_canvas, frame_window, face_out, face_rect, glitch, shot_info
 from .draw import (clamp01, ease_out, ease_in_out, back_out, pop, font, emoji, text_line, text_block, with_shadow,
                    rounded, boxed, asset, place)
-from .brand import (brand_hook, place_hook, intro, cap, captions, accent, beside_face, caption_y, end_card, board_y,
+from .brand import (speaker, brand_hook, place_hook, intro, cap, captions, accent, beside_face, caption_y, end_card, board_y,
                     SAFE_TOP, CAPTION_TOP, CAPTION_Y, CAPTION_W, BOARD_TOP, BOARD_BOTTOM)
 from .safezones import safe_box, safe_width, unsafe
 from .project import F_MONO, F_MONO_B, F_MONO_XB, F_REG
 from .style import (WHITE, PAPER, GREY, LINE, MUTED, U, PAD, GAP, MARGIN, R, bar, fade_in, tag, label, chip, panel,
                     stamp, mark, gradient, fade, radial, grain, vstack, hstack, on_panel)
-from .audio import (Mix, seconds, sfx_pop, sfx_click, sfx_tick, sfx_whoosh, sfx_boom, sfx_ding, sfx_correct, sfx_wrong,
+from .audio import (Mix, seconds, edit_audio, sfx_pop, sfx_click, sfx_tick, sfx_whoosh, sfx_boom, sfx_ding, sfx_correct, sfx_wrong,
                     sfx_bleep, sfx_glitch, sfx_type, sfx_typewriter, sfx_stamp, sfx_riser, sfx_cash, sfx_record_scratch,
-                    sfx_outro, sfx_impact, bed_drone, bed_beat, bed_phonk, bed_soft, bed_credits)
+                    sfx_outro, sfx_impact, sfx_news, sfx_rewind, bed_drone, bed_beat, bed_phonk, bed_soft, bed_credits)
 from .fx import (punch, push, shake, mono, deep_fry, vignette, flash, letterbox, meme_text, sticker, wobble,
-                 slam, faded, credits_card, red_vignette, snap)
+                 slam, faded, credits_card, red_vignette, snap, deliberate, typed, doc_card, news_banner, ticker, vhs)
+from .boards import list_board, bar_chart, counter, versus_board, when_said, timeline, place_board
 from .render import render

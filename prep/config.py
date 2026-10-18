@@ -9,7 +9,9 @@ def load_env(path=os.path.join(ROOT, ".env")):
     """KEY=value lines from .env into os.environ (values already set in the environment win)"""
     if not os.path.exists(path):
         return
-    for line in open(path, encoding="utf-8"):
+    with open(path, encoding="utf-8") as f:
+        lines = f.read().splitlines()
+    for line in lines:
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue

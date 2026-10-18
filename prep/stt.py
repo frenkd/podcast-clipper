@@ -1,24 +1,32 @@
-"""Speech to text: which service transcribes (Soniox when its key is set, else OpenAI), long recordings as
+"""Speech to text: which service transcribes (Soniox, ElevenLabs or OpenAI, whichever key is set), long recordings as
 overlapping chunks in parallel, stitched back at real pauses with speaker ids kept consistent, and the words grouped
 into subtitle-like cues. Words everywhere: {"t": text, "s": start ms, "e": end ms, "sp": speaker id as a string}."""
 import json
 import os
+import time
+import urllib.error
+import urllib.request
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 
+PROVIDERS = {"soniox": "SONIOX_API_KEY", "elevenlabs": "ELEVENLABS_API_KEY", "openai": "OPENAI_API_KEY"}  # preferred first
+
+
 def provider():
-    """"soniox" or "openai": STT in .env if set, else Soniox when its key is there (better names, one request per
-    episode), else OpenAI (one key for everything)"""
+    """"soniox", "elevenlabs" or "openai": STT in .env if set, else the first service in PROVIDERS whose key is there
+    (Soniox and ElevenLabs: words and speakers in one request; OpenAI: one key for everything)"""
     forced = (os.environ.get("STT") or "").strip().lower()
     if forced:
-        if forced not in ("soniox", "openai"):
-            raise SystemExit(f"STT={forced!r}: use soniox or openai")
+        if forced not in PROVIDERS:
+            raise SystemExit(f"STT={forced!r}: use one of {', '.join(PROVIDERS)}")
+        if not os.environ.get(PROVIDERS[forced]):
+            raise SystemExit(f"STT={forced} needs {PROVIDERS[forced]} in .env")
         return forced
-    if os.environ.get("SONIOX_API_KEY"):
-        return "soniox"
-    if os.environ.get("OPENAI_API_KEY"):
-        return "openai"
-    raise SystemExit("no transcription key: add OPENAI_API_KEY (or SONIOX_API_KEY) to .env")
+    for name, key in PROVIDERS.items():
+        if os.environ.get(key):
+            return name
+    raise SystemExit("no transcription key: add OPENAI_API_KEY (or ELEVENLABS_API_KEY or SONIOX_API_KEY) to .env")
 
 
 def transcribe(audio, duration, ctx, extract, on_status=None, parts_path=None):
@@ -26,15 +34,21 @@ def transcribe(audio, duration, ctx, extract, on_status=None, parts_path=None):
     if provider() == "soniox":
         from .soniox import transcribe_long
         return transcribe_long(audio, duration, ctx, extract, on_status, parts_path)
+    if provider() == "elevenlabs":
+        from .elevenlabs_stt import transcribe_long
+        return transcribe_long(audio, duration, ctx, extract, on_status, parts_path)
     from .openai_stt import transcribe_long
     return transcribe_long(audio, duration, ctx, extract, on_status, parts_path)
 
 
 def speakers(audio, duration, ctx, extract, on_status=None):
-    """who talks when, for re-diarizing: words (Soniox) or speaker turns (OpenAI), each with s, e and sp"""
+    """who talks when, for re-diarizing: words (Soniox, ElevenLabs) or speaker turns (OpenAI), each with s, e and sp"""
     if provider() == "soniox":
         from .soniox import tokens_to_words, transcribe_file
         return tokens_to_words(transcribe_file(audio, ctx))
+    if provider() == "elevenlabs":
+        from .elevenlabs_stt import transcribe_long
+        return transcribe_long(audio, duration, ctx, extract, on_status)
     from .openai_stt import speaker_turns
     return speaker_turns(audio, duration, extract, on_status)
 
@@ -75,6 +89,35 @@ def chunked(audio, duration, extract, one, chunk_s, overlap_s, concurrency, on_s
         with open(parts_path, "w", encoding="utf-8") as fh:
             json.dump({"starts": starts, "overlap": overlap_s, "parts": results}, fh, ensure_ascii=False)
     return stitch(results, [round(s * 1000) for s in starts], overlap_s * 1000)
+
+
+def post_audio(url, path, fields, headers, label, retries=4, timeout=900):
+    """multipart POST of an audio file plus form fields ([(name, value)], repeats allowed) -> parsed JSON; retries
+    rate limits, server errors and dropped connections with a growing wait"""
+    boundary = uuid.uuid4().hex
+    with open(path, "rb") as f:
+        audio = f.read()
+    parts = [f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode() for k, v in fields]
+    parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{os.path.basename(path)}"'
+                 f'\r\nContent-Type: audio/ogg\r\n\r\n'.encode() + audio + b"\r\n")
+    body = b"".join(parts) + f"--{boundary}--\r\n".encode()
+    for attempt in range(retries + 1):
+        req = urllib.request.Request(url, data=body, method="POST", headers={
+            **headers, "Content-Type": f"multipart/form-data; boundary={boundary}"})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            msg = e.read().decode(errors="replace")[:500]
+            if e.code in (429, 500, 502, 503, 504) and attempt < retries:
+                time.sleep(2 ** attempt * 3)
+                continue
+            raise RuntimeError(f"{label} -> {e.code}: {msg}") from None
+        except (urllib.error.URLError, TimeoutError, ConnectionError):
+            if attempt < retries:
+                time.sleep(2 ** attempt * 3)
+                continue
+            raise
 
 
 def words_to_cues(words, max_ms=7000, max_chars=90, pause_ms=900):

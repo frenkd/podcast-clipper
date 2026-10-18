@@ -4,16 +4,11 @@ gpt-4o-transcribe-diarize for who talks when. Every word gets the speaker whose 
 files up to 25 MB and its diarization relabels people after a few minutes, so episodes go as 3-minute overlapping
 chunks in parallel; stt.stitch() keeps the speaker ids consistent across them.
 Models: OPENAI_STT_WORDS / OPENAI_STT_SPEAKERS in .env."""
-import json
 import os
 import re
-import time
-import urllib.error
-import urllib.request
-import uuid
 
 from .config import require_key
-from .stt import chunked
+from .stt import chunked, post_audio
 
 URL = "https://api.openai.com/v1/audio/transcriptions"
 WORDS_MODEL = os.environ.get("OPENAI_STT_WORDS", "whisper-1")
@@ -21,33 +16,9 @@ SPEAKERS_MODEL = os.environ.get("OPENAI_STT_SPEAKERS", "gpt-4o-transcribe-diariz
 CHUNK_S, OVERLAP_S, CONCURRENCY = 180, 30, 6  # the diarize model relabels speakers after ~3.5 min: shorter chunks, stitch() keeps the ids
 
 
-def _post(path, fields, retries=4):
-    """multipart POST of an audio file plus form fields ([(name, value)], repeats allowed) -> parsed JSON"""
-    boundary = uuid.uuid4().hex
-    with open(path, "rb") as f:
-        audio = f.read()
-    parts = [f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode() for k, v in fields]
-    parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{os.path.basename(path)}"'
-                 f'\r\nContent-Type: audio/ogg\r\n\r\n'.encode() + audio + b"\r\n")
-    body = b"".join(parts) + f"--{boundary}--\r\n".encode()
-    for attempt in range(retries + 1):
-        req = urllib.request.Request(URL, data=body, method="POST", headers={
-            "Authorization": f"Bearer {require_key('OPENAI_API_KEY')}",
-            "Content-Type": f"multipart/form-data; boundary={boundary}"})
-        try:
-            with urllib.request.urlopen(req, timeout=900) as r:
-                return json.loads(r.read())
-        except urllib.error.HTTPError as e:
-            msg = e.read().decode(errors="replace")[:500]
-            if e.code in (429, 500, 502, 503, 504) and attempt < retries:
-                time.sleep(2 ** attempt * 3)
-                continue
-            raise RuntimeError(f"OpenAI transcription ({dict(fields).get('model')}) -> {e.code}: {msg}") from None
-        except (urllib.error.URLError, TimeoutError, ConnectionError):
-            if attempt < retries:
-                time.sleep(2 ** attempt * 3)
-                continue
-            raise
+def _post(path, fields):
+    return post_audio(URL, path, fields, {"Authorization": f"Bearer {require_key('OPENAI_API_KEY')}"},
+                      f"OpenAI transcription ({dict(fields).get('model')})")
 
 
 def _norm(t):

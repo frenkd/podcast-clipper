@@ -306,15 +306,16 @@ def _bell(f, d, decay=0.9):
 
 
 def sfx_outro():
-    """end card: two soft bell notes a fifth apart over a low hum (~1.4 s)"""
-    out = np.zeros(int(1.5 * SR), np.float32)
-    for at, f, g in ((0.0, 523.25, 0.6), (0.16, 783.99, 0.5)):  # C5, G5
-        b = _bell(f, 1.3, 0.55)
-        i = int(at * SR)
-        out[i:i + len(b)] += g * b[:len(out) - i]
-    t = seconds(1.5)
-    out += 0.25 * np.sin(2 * np.pi * 130.81 * t).astype(np.float32) * _env(len(t), 0.05, 0.5)
-    return _norm(out, 0.7)
+    """end card: a soft swoosh that settles into a low, warm thump (~1.2 s): no notes, so it never sounds like a
+    notification"""
+    t = seconds(1.2)
+    sw = _filt(_noise(1.2, 21), 150, 1500) * np.exp(-((t - 0.18) / 0.12) ** 2) * 0.35  # the air moving
+    f = 70 * np.exp(-t * 1.5) + 42                                                      # a low thump, falling
+    thump = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.minimum(1, np.maximum(0, t - 0.22) / 0.01) * \
+        np.exp(-np.maximum(0, t - 0.22) * 4.0)
+    warm = _filt(_noise(1.2, 22), 60, 400) * np.exp(-np.maximum(0, t - 0.22) * 3.0) * (t > 0.22) * 0.25
+    x = (sw + thump * 0.8 + warm).astype(np.float32)
+    return _norm(x * np.minimum(1, (1.2 - t) / 0.15).astype(np.float32), 0.6)
 
 
 def bed_soft(d, bpm=92, seed=0):
@@ -388,3 +389,23 @@ def sfx_impact():
     ring = (np.sin(2 * np.pi * 1760 * t) * 0.18 + np.sin(2 * np.pi * 2637 * t) * 0.1) * np.exp(-t * 6)
     boom = sfx_boom(1.6)
     return _norm(boom[:len(t)] + ring.astype(np.float32), 0.95)
+
+
+def sfx_news():
+    """a breaking-news sting (~1.6 s): a rising synth chord, a timpani-ish hit, a bright stab (original)"""
+    t = seconds(1.6)
+    rise = sum(np.sin(2 * np.pi * f * t * (1 + 0.12 * np.minimum(1, t / 0.5))) for f in (196.0, 246.94, 293.66)) / 3
+    rise *= np.minimum(1, t / 0.45) * (t < 0.55)
+    hit_t = np.maximum(0, t - 0.55)
+    hit = np.tanh(np.sin(2 * np.pi * np.cumsum(90 * np.exp(-hit_t * 6) + 55) / SR) * 2) * np.exp(-hit_t * 3.5) * (t >= 0.55)
+    stab = sum(np.sign(np.sin(2 * np.pi * f * t)) for f in (392.0, 493.88, 587.33)) / 3
+    stab = _filt((stab * np.exp(-hit_t * 5) * (t >= 0.55)).astype(np.float32), 200, 4000)
+    return _norm((0.5 * rise + 0.8 * hit + 0.35 * stab).astype(np.float32), 0.85)
+
+
+def sfx_rewind(d=0.9):
+    """a tape rewinding: a fast warbling chirp and hiss, rising"""
+    t = seconds(d)
+    f = 600 + 2400 * (t / d) ** 1.5 + 120 * np.sin(2 * np.pi * 23 * t)
+    x = np.sin(2 * np.pi * np.cumsum(f) / SR) * 0.35 + _filt(_noise(d, 31), 1500, 9000) * 0.5
+    return _norm((x * np.minimum(1, t / 0.03) * np.minimum(1, (d - t) / 0.05)).astype(np.float32), 0.5)

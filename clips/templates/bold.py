@@ -1,4 +1,5 @@
-"""$title: a punchy clip ($style style, made with `./clip quick`). It's a normal clip script: edit the settings below
+"""$title: a punchy clip ($style style, made with `./clip quick`): caps captions with the spoken word on a plate,
+a sticker by the head at the key moment, a slow drift in. It's a normal clip script: edit the settings below
 or anything else, then `./clip render $episode $num`. See PLAYBOOK.md for what else a clip can do."""
 from clipkit import *
 
@@ -12,11 +13,10 @@ STICKER = $sticker
 # when
 STICKER_T = E.dur * 0.45
 CHUNKS = chunk_words(E.words(), 3, 16)
-BEATS = [ch["s"] for ch in CHUNKS][1::2]   # a zoom punch on every other caption
 
 
 def draw(t, fr, face):
-    zoom = 1.06 * punch(t, BEATS, 0.06)
+    zoom = push(min(t, E.dur), 0, E.dur, 1.02, 1.1)   # a slow drift in (punch() exists for one hit, used sparingly)
     c = Image.fromarray(crop(fr, face, W, H, zoom=zoom)).convert("RGBA")
     if t >= E.dur:
         end_card(t - E.dur, c)
@@ -40,4 +40,4 @@ def sound(mix):
 
 
 if __name__ == "__main__":
-    render(NAME, E, draw, sound, bed=bed_beat, bed_gain=0.09)
+    render(NAME, E, draw, sound, bed=bed_soft, bed_gain=0.06)

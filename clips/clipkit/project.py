@@ -12,9 +12,10 @@ def dotenv(key):
         return os.environ[key]
     path = os.path.join(REPO, ".env")
     if os.path.exists(path):
-        for line in open(path):
-            if line.startswith(key + "="):
-                return line.split("=", 1)[1].split("#")[0].strip().strip('"') or None
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if line.startswith(key + "="):
+                    return line.split("=", 1)[1].split("#")[0].strip().strip('"') or None
     return None
 
 

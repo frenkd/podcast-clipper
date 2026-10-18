@@ -24,10 +24,10 @@ BOARD_TOP = BAND + 24              # split layout: boards go from here down to B
 BOARD_BOTTOM = CAPTION_TOP + CAPTION_DROP - 24   # (overlay layout: boards sit on the video, bottom at BOARD_BOTTOM)
 
 
-def board_y(h):
+def board_y(h, layout=None):
     """centre y for a board h px tall: under the video band (split layout), or resting just above the captions on
-    top of the video (overlay layout, the default: the shot stays whole and visible)"""
-    return BOARD_TOP + h / 2 if LAYOUT == "split" else BOARD_BOTTOM - h / 2
+    top of the video (overlay layout, the default: the shot stays whole and visible). layout: for this clip."""
+    return BOARD_TOP + h / 2 if (layout or LAYOUT) == "split" else BOARD_BOTTOM - h / 2
 
 
 def speaker():
