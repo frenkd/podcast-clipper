@@ -63,6 +63,7 @@ class Effects(unittest.TestCase):
         self.assertEqual(fx.punch(5.0, [1.0]), 1.0)
         self.assertGreater(fx.punch(1.05, [1.0]), 1.0)
         self.assertEqual(fx.shake(2.0, 1.0), (0.0, 0.0))
+        self.assertTrue(all(abs(v) <= 0.025 for v in fx.shake(1.01, 1.0)))  # crop() fractions, not pixels
         self.assertAlmostEqual(fx.push(10, 0, 4, 1.0, 1.3), 1.3)
         self.assertAlmostEqual(fx.slam(5, 0), 1.0, places=2)
 

@@ -8,3 +8,4 @@ SHOT_INFO = {}    # track_edit(): output frame -> {angle, speaker, mode, wide}
 CAPTIONS_AFTER = 0.0  # intro(): captions wait until the headline leaves the caption zone
 HOOK_SPEAKER = ""     # render(): who is talking while the headline is up (its name line)
 CLIP_SPEAKER = ""     # render(): the name of whoever speaks most in the clip (headline name line, end card)
+MOVES = set()          # (t0, t1) of deliberate camera moves (fx.snap, shake, punch): QA's CROP JUMP skips them

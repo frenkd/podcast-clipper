@@ -11,7 +11,9 @@ from .store import project_dir, read_json
 
 STYLES = {"chill": "calm: clean captions, a slow push-in, a soft bed",
           "bold": "punchy: caps captions with the word on a plate, zoom punches, a sticker, a beat",
-          "meme": "loud: one-word captions, punches on every line, and the black-and-white 'sigma' drop at the end"}
+          "meme": "loud: one-word captions, punches on every line, and the black-and-white 'sigma' drop at the end",
+          "dramatic": "the smash zoom: bold captions, then on the last line a zoom into the face, shake, boom, big caption",
+          "credits": "the 'directed by' ending: the clip plays out, the last frame freezes and a credits card rolls in"}
 TEMPLATES = os.path.join(ROOT, "clips", "templates")
 
 
@@ -50,6 +52,9 @@ def suggest(text, style, language):
     if style == "bold":
         want["sticker"] = s("one or two words for a sticker at the clip's key moment, in the language the clip is "
                             "spoken in")
+    if style == "dramatic":
+        want["drama"] = s("a 1-3 word reaction for the punchline, the 'WAIT WHAT' or 'BRO?!' kind, in the language "
+                          "the clip is spoken in")
     if style == "meme":
         want["meme"] = s("a short meme caption for the end, the 'SIGMA RULE #N' or 'meanwhile…' kind, max 6 words, "
                          "funny but kind, in the language the clip is spoken in")
@@ -60,7 +65,7 @@ def suggest(text, style, language):
         return {}
 
 
-def write_script(pid, a, b, style, headline=None, sticker=None, meme=None, name=None):
+def write_script(pid, a, b, style, headline=None, sticker=None, meme=None, name=None, drama=None, credit=None):
     """-> path of the new clip script in projects/<id>/scripts/"""
     if style not in STYLES:
         raise SystemExit(f"--style {style}? one of: {', '.join(STYLES)}")
@@ -70,12 +75,15 @@ def write_script(pid, a, b, style, headline=None, sticker=None, meme=None, name=
     text = spoken(pid, a, b)
     if not text:
         raise SystemExit(f"nothing is said between {a:.1f} and {b:.1f} s (is the episode transcribed? `./clip go`)")
-    lang = (read_json(os.path.join(project_dir(pid), "project.json")) or {}).get("language")
-    if headline is None or (style == "bold" and sticker is None) or (style == "meme" and meme is None):
+    project = read_json(os.path.join(project_dir(pid), "project.json")) or {}
+    lang = project.get("language")
+    if headline is None or (style == "bold" and sticker is None) or (style == "meme" and meme is None) or \
+            (style == "dramatic" and drama is None):
         got = suggest(text, style, lang)
         headline = got.get("headline") if headline is None else headline
         sticker = got.get("sticker") if sticker is None else sticker
         meme = got.get("meme") if meme is None else meme
+        drama = got.get("drama") if drama is None else drama
     from .store import slugify  # (č -> c, ß -> ss, …)
     words = slugify(name or headline or " ".join(text.split()[:5]), 8).split("-")
     slug = ""
@@ -89,7 +97,10 @@ def write_script(pid, a, b, style, headline=None, sticker=None, meme=None, name=
             title=headline or fname, style=style, episode=pid, num=f"{num:02d}", name=fname,
             start=f"{a:.2f}", end=f"{b:.2f}", headline=json.dumps(headline, ensure_ascii=False) if headline else "None",
             sticker=json.dumps(sticker, ensure_ascii=False) if sticker else "None",
-            meme=json.dumps(meme or f"sigma rule #{int(a) % 89 + 11}", ensure_ascii=False))
+            meme=json.dumps(meme or f"sigma rule #{int(a) % 89 + 11}", ensure_ascii=False),
+            drama=json.dumps(drama or "wait what", ensure_ascii=False),
+            credit=json.dumps(credit or project.get("host") or (project.get("people") or [None])[0] or "nobody, apparently",
+                              ensure_ascii=False))
     path = os.path.join(scripts, fname + ".py")
     with open(path, "w", encoding="utf-8") as f:
         f.write(src)

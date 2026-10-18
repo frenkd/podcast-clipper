@@ -25,7 +25,7 @@ def draw(t, fr, face):
         return c
     k = t - E.dur
     if k < DROP:  # the drop: the last frame, held on purpose
-        sx, sy = shake(k, 0.0, 0.35, 30)
+        sx, sy = shake(k, 0.0, 0.35, 0.03)
         c = Image.fromarray(crop(fr, face, W, H, zoom=push(k, 0, DROP, 1.08, 1.32), dx=sx, dy=sy)).convert("RGBA")
         c = vignette(mono(c, ease_out(k / 0.2)), 0.8)
         if k < 0.35:

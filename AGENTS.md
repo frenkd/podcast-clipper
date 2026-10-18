@@ -76,7 +76,7 @@ prep/                  getting an episode ready: folder, transcription (stt.py: 
                        quick.py (./clip quick)
 publish/               optional: uploads finished clips to platforms (youtube.py: Shorts, upload-only)
 clips/                 clipkit/ (the engine: theme, style, brand, fx, angles, render + QA), templates/ (chill, bold,
-                       meme), run.py, selftest.py, review.py
+                       meme, dramatic, credits), run.py, selftest.py, review.py
 tests/                 unit tests (./clip test)
 assets/                fonts (Inter, JetBrains Mono, both OFL), YuNet face model
 projects/<id>/         one episode: source/ (video + notes), work/ (transcripts, caches), scripts/, preview/, final/,

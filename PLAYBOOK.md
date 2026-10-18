@@ -77,11 +77,15 @@ Clips can be anything from a calm, classy quote to a full meme edit. Match the m
 | **chill** | clean captions, a slow push-in, a soft bed; the conversation does the work | `captions(style="clean")`, `push()`, `bed_soft` |
 | **bold** | caps captions with the spoken word on a plate, zoom punches on the beat, a sticker by the head, a beat | `captions(style="bold")`, `punch()`, `sticker()`, `wobble()`, `bed_beat` |
 | **meme** | one huge word at a time, punches on every line, and the drop: black and white, slow push-in, a big caption, a phonk beat | `captions(style="meme")`, `mono()`, `vignette()`, `meme_text()`, `slam()`, `shake()`, `flash()`, `deep_fry()`, `bed_phonk` |
+| **dramatic** | bold captions, then on the punchline a smash zoom into the face, a shake, red edges, a boom and a big reaction | `snap()`, `shake()`, `red_vignette()`, `flash()`, `meme_text()`, `sfx_impact` |
+| **credits** | the clip plays out, then the last frame freezes, fades to warm film, and a "directed by" card rolls in over a bouncy riff | `faded()`, `credits_card()`, `bed_credits` |
 
 `clips/templates/` has a working script for each (that's what `./clip quick` copies). Mix freely: a chill clip with
 one meme drop on the punchline is often the funniest version. Two rules for the loud end:
-- **One drop per clip.** The deep-fry, the shake, the "SIGMA RULE #47": once, on the payoff, reads as a joke. Five
-  times reads as noise.
+- **One drop per clip.** The deep-fry, the shake, the "SIGMA RULE #47", the smash zoom, the credits: once, on the
+  payoff, reads as a joke. Five times reads as noise. The drop holds the last frame on purpose, after the voice.
+- **Deliberate moves pass QA.** `snap()`, `shake()` and `punch()` tell the CROP JUMP check they're on purpose; for a
+  move of your own, call `deliberate(t0, t1)`.
 - **Tease situations, not people.** Nothing mean or tasteless about the guest, other people or groups.
 
 ## 5. Build, render, review
@@ -89,10 +93,12 @@ one meme drop on the punchline is often the funniest version. Two rules for the 
 **The fast path.** One clip from a time range, from a template, rendered as a preview:
 
 ```bash
-./clip quick <id> 12:30-13:05 --style chill|bold|meme [--headline "…"] [--sticker "…"] [--meme "…"]
+./clip quick <id> 12:30-13:05 --style chill|bold|meme|dramatic|credits [--headline "…"] [--sticker "…"]
+                                [--meme "…"] [--drama "…"] [--credit "…"]
 ```
 
-With an OpenAI key it writes the headline (and the sticker or the drop's caption) itself. The result is a normal
+With an OpenAI key it writes the headline (and the sticker, the drop's caption or the reaction) itself; `credits`
+names the host unless you pass `--credit`. The result is a normal
 script in `projects/<id>/scripts/`: edit it like any other.
 
 **The full path.** Scripts go in `projects/<id>/scripts/NN_name.py` (shared helpers: `_name.py`). Start from a
@@ -207,15 +213,15 @@ clip), never change meaning. Facts and numbers on screen must be true.
   `vstack`, `hstack`, `on_panel`; tokens `U`, `PAD`, `GAP`, `R`, `WHITE`, `GREY`, `LINE`, `MUTED`; theme `ACCENT`,
   `ON_ACCENT`, `TEXT`, `INK`, `THEME`; fonts `F_BLACK`, `F_XBOLD`, `F_BOLD`, `F_MED`, `F_REG`, `F_MONO`, `F_MONO_B`,
   `F_MONO_XB`.
-- Effects (`clipkit/fx.py`): `punch`, `push`, `shake`, `mono`, `deep_fry`, `vignette`, `flash`, `letterbox`,
-  `meme_text`, `sticker`, `wobble`, `slam`.
+- Effects (`clipkit/fx.py`): `punch`, `push`, `shake`, `snap`, `deliberate`, `mono`, `deep_fry`, `faded`, `vignette`,
+  `red_vignette`, `flash`, `letterbox`, `meme_text`, `sticker`, `credits_card`, `wobble`, `slam`.
 - `text_line`, `text_block`, `emoji`, `rounded`, `asset`; easing `ease_out`, `ease_in_out`, `clamp01`, `pop`;
   `place(canvas, im, x, y, scale, alpha, rot, anchor, over=, clip_ok=)`.
 - `intro(c, text, face, t)`, `captions(c, CHUNKS, t, split, style=)` (or `cap(chunk, t)`), `accent(…)`,
   `beside_face(c, im, face)`, `end_card(t, c)`; `BOARD_TOP`, `BOARD_BOTTOM`, `CAPTION_Y`, `CAPTION_W`, `SAFE_TOP`,
   `safe_width(y0, y1)`.
 - `render(NAME, E, draw, sound, bed=…, tail=…, outro_sound=…)`; in `sound(mix)`: `mix.add(t, sfx_…(), gain)`,
-  `mix.mute(t0, t1)`; beds `bed_soft`, `bed_beat`, `bed_drone`, `bed_phonk`.
+  `mix.mute(t0, t1)`; beds `bed_soft`, `bed_beat`, `bed_drone`, `bed_phonk`, `bed_credits`; hits `sfx_impact`, `sfx_boom`, …
 
 ## Checklist (every round, every clip)
 

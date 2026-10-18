@@ -256,14 +256,15 @@ def shot_info(t):
     return state.SHOT_INFO.get(int(round(t * FPS)), {}) if state.SHOT_INFO else {}
 
 
-def crop(fr, face, out_w, out_h, zoom=1.0, face_y=0.36, face_x=0.5, dx=0.0, dy=0.0, at=(0, 0), fit=True):
+def crop(fr, face, out_w, out_h, zoom=1.0, face_y=0.36, face_x=0.5, dx=0.0, dy=0.0, at=(0, 0), fit=True, max_zoom=2.4):
     """Crop the source so the face lands at (face_x, face_y) of an out_w x out_h picture. zoom > 1 is tighter.
     fit: push in on small faces (a wide shot) so the person reads like a close-up (up to 1.8x, constant per shot).
-    at: where you'll paste the result on the canvas (so face checks know where the face ends up)."""
+    at: where you'll paste the result on the canvas (so face checks know where the face ends up). max_zoom: the most
+    it pushes in overall (past ~2.4x the picture gets soft; a meme zoom may want that)."""
     sh, sw = fr.shape[:2]
     if fit and face[2] > 0:
         zoom *= min(1.8, max(1.0, 0.2 * sh / face[2]))
-        zoom = min(zoom, 2.4)
+        zoom = min(zoom, max_zoom)
     asp = out_w / out_h
     ch = sh / zoom
     cw = ch * asp

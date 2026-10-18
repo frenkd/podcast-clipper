@@ -32,7 +32,7 @@ from .style import (WHITE, PAPER, GREY, LINE, MUTED, U, PAD, GAP, MARGIN, R, bar
                     stamp, mark, gradient, fade, radial, grain, vstack, hstack, on_panel)
 from .audio import (Mix, seconds, sfx_pop, sfx_click, sfx_tick, sfx_whoosh, sfx_boom, sfx_ding, sfx_correct, sfx_wrong,
                     sfx_bleep, sfx_glitch, sfx_type, sfx_typewriter, sfx_stamp, sfx_riser, sfx_cash, sfx_record_scratch,
-                    sfx_outro, bed_drone, bed_beat, bed_phonk, bed_soft)
+                    sfx_outro, sfx_impact, bed_drone, bed_beat, bed_phonk, bed_soft, bed_credits)
 from .fx import (punch, push, shake, mono, deep_fry, vignette, flash, letterbox, meme_text, sticker, wobble,
-                 slam)
+                 slam, faded, credits_card, red_vignette, snap)
 from .render import render

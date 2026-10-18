@@ -25,7 +25,7 @@ prepare an episode
   srt <episode>                           full-episode subtitles -> projects/<episode>/episode/subtitles.srt
 
 make clips
-  quick <episode> 12:30-13:05 [--style chill|bold|meme] [--headline …]   the fast path: one clip from a template,
+  quick <episode> 12:30-13:05 [--style chill|bold|meme|dramatic|credits] [--headline …]   the fast path: one clip from a template,
                                           rendered as a preview (edit projects/<episode>/scripts/NN_….py after)
   render <episode> [clips…] [--final] [-j N]   render clip scripts (fast previews unless --final) + QA
   angles <episode> [--force]              camera angles + who sits where (work/angles.json, angles.jpg)
@@ -96,13 +96,13 @@ def main(argv=None):
         ap.add_argument("episode")
         ap.add_argument("range", help="start-end, e.g. 12:30-13:05")
         ap.add_argument("--style", default="chill", choices=list(quick.STYLES))
-        for opt in ("headline", "sticker", "meme", "name"):
+        for opt in ("headline", "sticker", "meme", "drama", "credit", "name"):
             ap.add_argument(f"--{opt}")
         ap.add_argument("--final", action="store_true")
         q = ap.parse_args(rest)
         p = find_project(q.episode)
         a, b = quick.parse_range(q.range)
-        path = quick.write_script(p["id"], a, b, q.style, q.headline, q.sticker, q.meme, q.name)
+        path = quick.write_script(p["id"], a, b, q.style, q.headline, q.sticker, q.meme, q.name, q.drama, q.credit)
         print(f"wrote scripts/{os.path.basename(path)} in {p['id']} ({q.style}: {quick.STYLES[q.style]})\n"
               f"rendering a preview; edit the script and `./clip render {p['id']} {os.path.basename(path)[:2]}` any time", flush=True)
         return _engine([os.path.join(ROOT, "clips", "run.py")], [p["id"], path] + (["--final"] if q.final else []))

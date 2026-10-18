@@ -32,9 +32,11 @@ Know the moment already? One command makes one clip:
 | `chill` | clean captions, a slow push-in, a soft beat |
 | `bold` | caps captions with the spoken word on a plate, zoom punches, a sticker |
 | `meme` | one huge word at a time, then the black-and-white "sigma" drop with a phonk beat |
+| `dramatic` | on the punchline: a smash zoom into the face, a shake, a boom and a big reaction |
+| `credits` | the clip plays out, freezes, and a "directed by" card rolls in over a bouncy riff |
 
 It writes a short script in `projects/my-episode/scripts/` and renders a preview. The script is yours: change a
-word, a colour, the timing, and render again. Try the same moment in all three styles to feel the range.
+word, a colour, the timing, and render again. Try the same moment in a few styles to feel the range.
 
 ## Make it yours
 

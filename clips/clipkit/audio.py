@@ -340,3 +340,51 @@ def bed_soft(d, bpm=92, seed=0):
             out[i:i + m] += 0.35 * kick[:m]
     out = _filt(out, 60, 2500)
     return _norm(out * np.minimum(1, t / 0.5).astype(np.float32) * np.minimum(1, (d - t) / 0.8).astype(np.float32), 0.6)
+
+
+# ---- meme formats
+
+def bed_credits(d, bpm=132, seed=0):
+    """a bouncy, slightly silly jazz riff for the "directed by" credits ending: a tuba-ish bass hopping root-fifth,
+    a woody lead with a few blue notes, brushed snare on 2 and 4 (an original tune, written here)"""
+    t = seconds(d)
+    out = np.zeros(len(t), np.float32)
+    beat = 60 / bpm
+    root = [130.81, 110.0, 146.83, 98.0]                              # C, A, D, G: one bar each
+    lead = [0, 4, 7, 9, 10, 9, 7, 4, 3, 4, 7, 12, 11, 7, 5, 2]          # semitones over C5, in eighths
+
+    def put(sig, at, g):
+        i = int(at * SR)
+        m = min(len(sig), len(out) - i)
+        if m > 0 and i >= 0:
+            out[i:i + m] += sig[:m] * g
+
+    def tuba(f, dd):
+        tt = seconds(dd)
+        x = sum(np.sin(2 * np.pi * f * k * tt) / k ** 1.4 for k in range(1, 6))
+        return (x * np.minimum(1, tt / 0.02) * np.exp(-tt * 5)).astype(np.float32)
+
+    def reed(f, dd):
+        tt = seconds(dd)
+        x = np.sign(np.sin(2 * np.pi * f * tt)) * 0.5 + np.sin(2 * np.pi * 2 * f * tt) * 0.3
+        return _filt((x * np.minimum(1, tt / 0.015) * np.exp(-tt * 7)).astype(np.float32), 300, 3500)
+    brush = _filt(_noise(0.12, seed + 5), 2000, 9000) * _env(int(0.12 * SR), 0.004, 0.05)
+    for b in range(int(d / beat) + 1):
+        at = b * beat
+        bar = b // 4
+        f = root[bar % 4] / 2
+        put(tuba(f * (1.5 if b % 2 else 1.0), beat * 0.9), at, 0.55)
+        if b % 2:
+            put(brush, at, 0.25)
+        for half in (0, 1):  # swung eighths
+            n = lead[(b * 2 + half) % 16]
+            put(reed(523.25 * 2 ** (n / 12), beat * 0.42), at + half * beat * 0.62, 0.22)
+    return _norm(out * np.minimum(1, t / 0.05).astype(np.float32) * np.minimum(1, (d - t) / 0.8).astype(np.float32), 0.7)
+
+
+def sfx_impact():
+    """the dramatic-zoom hit: a deep boom with a metallic ring on top"""
+    t = seconds(1.6)
+    ring = (np.sin(2 * np.pi * 1760 * t) * 0.18 + np.sin(2 * np.pi * 2637 * t) * 0.1) * np.exp(-t * 6)
+    boom = sfx_boom(1.6)
+    return _norm(boom[:len(t)] + ring.astype(np.float32), 0.95)

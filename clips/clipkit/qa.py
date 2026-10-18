@@ -57,7 +57,8 @@ class Checker:
         if p is not None and abs(m[2] - p[2]) / p[2] < 0.01:
             moved = math.hypot(m[0] - p[0], m[1] - p[1]) * m[2]
             gi = int(round(t * FPS))
-            if moved > 25 * STEP and not any(abs(gi - b) <= STEP for b in state.SHOT_BOUNDS):
+            if moved > 25 * STEP and not any(abs(gi - b) <= STEP for b in state.SHOT_BOUNDS) and \
+                    not any(a <= t <= b for a, b in state.MOVES):
                 self.jumps.append(t)
         self._prev_map = m
         fx0, fy0, fx1, fy1 = face_rect(face)
