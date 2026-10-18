@@ -11,7 +11,7 @@ from prep.fixes import fix_text, fix_words, parse_fix  # noqa: E402
 from prep.media import Budget  # noqa: E402
 from prep.soniox import tokens_to_words  # noqa: E402
 from prep.stt import stitch, words_to_cues  # noqa: E402
-from prep.store import create_project, find_project, slugify, update_project  # noqa: E402
+from prep.store import create_project, find_project, project_dir, slugify, update_project  # noqa: E402
 from prep.subtitles import parse_subtitles, to_srt  # noqa: E402
 
 
@@ -167,6 +167,53 @@ class SpeechToText(unittest.TestCase):
                                              {"t": "hi!", "s": 2000, "e": 2200, "sp": "2"}])
         self.assertEqual(keyterms(["PostgreSQL", "x" * 60, "a b c d e f", "[bad]", "PostgreSQL", " Hugging Face "]),
                          ["PostgreSQL", "Hugging Face"])
+
+
+
+class FirstRun(unittest.TestCase):
+    def test_api_errors_say_what_to_do(self):
+        from prep.config import ServiceError, api_error
+        e = api_error("OpenAI", "OPENAI_API_KEY", 401, '{"error": {"code": "invalid_api_key"}}')
+        self.assertIsInstance(e, ServiceError)
+        self.assertIn("check OPENAI_API_KEY in .env", str(e))
+        self.assertIn("out of credit", str(api_error("OpenAI", "K", 429, '{"code": "insufficient_quota"}')))
+        self.assertIn("rate-limiting", str(api_error("ElevenLabs", "K", 429, "slow down")))
+        self.assertIn("server error", str(api_error("Soniox", "K", 503, "")))
+
+    def test_files_are_refused_with_a_reason(self):
+        from prep.files import kind_for
+        self.assertEqual((kind_for("ep.MP4"), kind_for("ep.srt"), kind_for("notes.md")), ("video", "subtitles", "context"))
+        with self.assertRaises(SystemExit) as e:
+            kind_for("episode.mp3")
+        self.assertIn("audio only", str(e.exception))
+        self.assertRaises(SystemExit, kind_for, "slides.pptx")
+
+    def test_typos_list_the_episodes(self):
+        create_project("Typo test")
+        with self.assertRaises(SystemExit) as e:
+            find_project("no-such-episode-xyz")
+        self.assertIn("there are:", str(e.exception))
+
+    def test_languages_from_the_services(self):
+        from prep.stt import detected_language
+        self.assertEqual([detected_language(x) for x in ("slv", "Slovenian", "en", "", "klingon")],
+                         ["sl", "sl", "en", None, None])
+
+    def test_gallery_lists_the_previews_with_qa(self):
+        from prep import gallery
+        pid = create_project("Gallery test")["id"]
+        d = os.path.join(project_dir(pid), "preview")
+        os.makedirs(d)
+        for name, qa in (("01_a", "OK"), ("02_b", "COVERS FACE  02_b.py:3 (draw): 1.0-2.0s")):
+            with open(os.path.join(d, name + ".mp4"), "wb") as f:
+                f.write(b"x" * 1000)
+            with open(os.path.join(d, name + ".qa.txt"), "w") as f:
+                f.write(qa + "\n")
+        page = gallery.write(pid)[0]
+        with open(page, encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn('src="01_a.mp4"', text)
+        self.assertIn("COVERS FACE", text)
 
 
 if __name__ == "__main__":

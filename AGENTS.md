@@ -64,7 +64,7 @@ Do these in order and tell the user briefly what you did. Ask before installing 
    **Never** ask for keys in the chat, never print `.env` or a key, never put keys anywhere but `.env` (it's
    git-ignored). Check without revealing:
    `.venv/bin/python -c "import re;t=open('.env').read();print({k:bool(re.search(k+r'=\S+',t)) for k in ['OPENAI_API_KEY','ELEVENLABS_API_KEY','SONIOX_API_KEY']})"`
-   (only `OPENAI_API_KEY` has to be True)
+   (one True is enough to start; OpenAI adds the notes, the cleanup and the headlines)
 5. **Smoke test.** `./clip test && ./clip selftest` (unit tests, then a test clip rendered end to end, ~10 s).
 6. **Their look (optional).** Offer to make `theme.json` from `theme.example.json`: the show's name, an accent colour,
    a logo. The neutral default is fine to start with.
