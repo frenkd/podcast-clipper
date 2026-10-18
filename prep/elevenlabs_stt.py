@@ -6,7 +6,7 @@ import os
 import re
 
 from .config import require_key
-from .stt import chunked, post_audio
+from .stt import chunked, detected_language, post_audio
 
 URL = "https://api.elevenlabs.io/v1/speech-to-text"
 MODEL = os.environ.get("ELEVENLABS_STT_MODEL", "scribe_v2")
@@ -46,7 +46,10 @@ def _transcribe(path, ctx, offset_ms=0):
         fields.append(("language_code", ctx["language"]))
     fields += [("keyterms", t) for t in keyterms(ctx.get("terms"))]
     r = post_audio(URL, path, fields, {"xi-api-key": require_key("ELEVENLABS_API_KEY")},
-                   f"ElevenLabs transcription ({MODEL})", timeout=3600)
+                   f"ElevenLabs transcription ({MODEL})", timeout=3600, key="ELEVENLABS_API_KEY")
+    from . import stt
+    if detected_language(r.get("language_code")):
+        stt.DETECTED.setdefault("language", detected_language(r.get("language_code")))
     return to_words(r, offset_ms)
 
 

@@ -8,7 +8,7 @@ import os
 import re
 
 from .config import require_key
-from .stt import chunked, post_audio
+from .stt import chunked, detected_language, post_audio
 
 URL = "https://api.openai.com/v1/audio/transcriptions"
 WORDS_MODEL = os.environ.get("OPENAI_STT_WORDS", "whisper-1")
@@ -18,7 +18,7 @@ CHUNK_S, OVERLAP_S, CONCURRENCY = 180, 30, 6  # the diarize model relabels speak
 
 def _post(path, fields):
     return post_audio(URL, path, fields, {"Authorization": f"Bearer {require_key('OPENAI_API_KEY')}"},
-                      f"OpenAI transcription ({dict(fields).get('model')})")
+                      f"OpenAI transcription ({dict(fields).get('model')})", key="OPENAI_API_KEY")
 
 
 def _norm(t):
@@ -51,6 +51,9 @@ def _words(path, offset_ms, ctx):
     if terms:  # names and terms to spell right (whisper reads up to ~224 tokens of prompt)
         fields.append(("prompt", terms[:800]))
     r = _post(path, fields)
+    from . import stt
+    if detected_language(r.get("language")):
+        stt.DETECTED.setdefault("language", detected_language(r.get("language")))
     words = [{"t": w["word"].strip(), "s": round(w["start"] * 1000) + offset_ms, "e": round(w["end"] * 1000) + offset_ms}
              for w in r.get("words") or [] if w.get("word", "").strip()]
     return punctuate(words, r.get("segments") or [])

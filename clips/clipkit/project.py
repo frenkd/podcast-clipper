@@ -116,7 +116,11 @@ if _missing:
 
 def run(cmd, **kw):
     """run a command, return stdout; exit with its stderr on failure"""
-    r = subprocess.run(cmd, capture_output=True, **kw)
+    try:
+        r = subprocess.run(cmd, capture_output=True, **kw)
+    except FileNotFoundError:
+        raise SystemExit(f"{cmd[0]} isn't installed (or not on PATH): install ffmpeg, or ask your agent for the "
+                         "first-time setup") from None
     if r.returncode:
         sys.stderr.write(" ".join(map(str, cmd)) + "\n" + r.stderr.decode(errors="replace")[-3000:])
         raise SystemExit(1)

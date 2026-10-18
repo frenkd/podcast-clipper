@@ -48,3 +48,26 @@ def require_key(name):
     if not v:
         raise SystemExit(f"{name} is missing: add it to .env")
     return v
+
+
+class ServiceError(RuntimeError):
+    """an outside service said no (bad key, no credit, rate limit…): shown as one plain line, without a traceback"""
+
+
+def api_error(service, key, code, body):
+    """an API's HTTP error in words a newcomer can act on (the raw message stays at the end)"""
+    low = (body or "").lower()
+    if code in (401, 403) or "invalid_api_key" in low or "invalid api key" in low:
+        what = f"{service} didn't accept the key: check {key} in .env (pasted whole, no spaces, still active)"
+    elif code == 402 or "insufficient_quota" in low or ("quota" in low and code == 429) or "out of credit" in low:
+        what = f"{service} says the account is out of credit or over its plan: top it up on their site"
+    elif code == 429:
+        what = f"{service} is rate-limiting this account: wait a minute and run it again"
+    elif code == 413:
+        what = f"{service} says the file is too big"
+    elif code >= 500:
+        what = f"{service} had a server error: run it again in a bit"
+    else:
+        what = f"{service} refused the request ({code})"
+    detail = " ".join((body or "").split())[:240]
+    return ServiceError(f"{what}. [{code}: {detail}]")

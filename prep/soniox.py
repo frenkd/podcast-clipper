@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 import uuid
 
-from .config import SONIOX_MODEL, require_key
+from .config import SONIOX_MODEL, api_error, require_key
 from .stt import chunked
 
 API = "https://api.soniox.com/v1"
@@ -22,7 +22,7 @@ def _api(path, method="GET", body=None, headers=None):
             data = r.read()
             return json.loads(data) if data else None
     except urllib.error.HTTPError as e:
-        raise RuntimeError(f"Soniox {method} {path} -> {e.code}: {e.read().decode(errors='replace')[:500]}") from None
+        raise api_error("Soniox", "SONIOX_API_KEY", e.code, e.read().decode(errors="replace")[:500]) from None
 
 
 def _upload(path):

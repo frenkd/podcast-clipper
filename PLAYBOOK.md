@@ -120,7 +120,8 @@ template; `from clipkit import *` gives you everything (summary at the end).
 ./clip render <id> --final     # full quality → projects/<id>/final/
 ```
 
-Previews always stay under 10 MB, so they can go straight into Discord or a chat. Renders use the best video encoder
+Previews always stay under 10 MB, so they can go straight into Discord or a chat. `./clip gallery <id>` writes a
+page next to them to watch them all side by side with their QA result: give the user its `file://` link. Renders use the best video encoder
 the machine has (the header line of `./clip render` names it); `CLIP_ENCODER=x264` forces the CPU one.
 
 Every render writes, next to the video (`preview/` or `final/`):

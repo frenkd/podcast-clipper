@@ -4,7 +4,7 @@ import time
 import urllib.error
 import urllib.request
 
-from .config import MODELS, require_key
+from .config import MODELS, api_error, require_key
 
 
 def llm_json(system, user, schema, name="out", model="smart", effort="low", images=()):
@@ -27,9 +27,9 @@ def llm_json(system, user, schema, name="out", model="smart", effort="low", imag
             return json.loads(text)
         except urllib.error.HTTPError as e:
             msg = e.read().decode(errors="replace")[:500]
-            if e.code < 500 and e.code != 429:
-                raise RuntimeError(f"OpenAI {e.code}: {msg}") from None
-            last = RuntimeError(f"OpenAI {e.code}: {msg}")
+            if (e.code < 500 and e.code != 429) or "insufficient_quota" in msg:
+                raise api_error("OpenAI", "OPENAI_API_KEY", e.code, msg) from None
+            last = api_error("OpenAI", "OPENAI_API_KEY", e.code, msg)
         except (urllib.error.URLError, TimeoutError, RuntimeError, ValueError) as e:
             last = e
         time.sleep(1.5 * (attempt + 1))

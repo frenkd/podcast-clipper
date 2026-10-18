@@ -1,6 +1,7 @@
 """ffmpeg: probing, audio for speech recognition, a poster frame. Every ffmpeg call takes cores from a shared
 budget (CPU_CORES) and is told to use exactly that many threads, so prep never takes over the machine."""
 import json
+import os
 import subprocess
 import threading
 
@@ -48,12 +49,16 @@ def _cap_threads(cmd, n):
 
 def run(cmd, threads=1):
     """run a command, return stdout as text; raise with the end of stderr on failure"""
-    if cmd[0] == FFMPEG:
-        n = min(threads, CPU_CORES)
-        with CPU.take(n):
-            r = subprocess.run(_cap_threads(cmd, n), capture_output=True)
-    else:
-        r = subprocess.run(cmd, capture_output=True)
+    try:
+        if cmd[0] == FFMPEG:
+            n = min(threads, CPU_CORES)
+            with CPU.take(n):
+                r = subprocess.run(_cap_threads(cmd, n), capture_output=True)
+        else:
+            r = subprocess.run(cmd, capture_output=True)
+    except FileNotFoundError:
+        raise SystemExit(f"{os.path.basename(cmd[0])} isn't installed (or not on PATH): install ffmpeg, or ask your agent "
+                         "for the first-time setup") from None
     if r.returncode:
         tail = "\n".join(r.stderr.decode(errors="replace").splitlines()[-8:])
         raise RuntimeError(f"{cmd[0].split('/')[-1]} failed ({r.returncode}): {tail}")

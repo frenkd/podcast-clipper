@@ -17,7 +17,8 @@ You need Python 3.14+, ffmpeg, a coding agent (Claude Code, Codex, Cursor, …) 
 3. Ask: **"Make clips from ~/Videos/episode.mp4"**. Add anything that helps (show notes, the guest's name, a moment
    you liked) or just say "go with the defaults".
 
-It shows you previews, you say what to change, and the finals land in `projects/<episode>/final/`.
+It shows you previews (`./clip gallery` puts them side by side on one page), you say what to change, and the
+finals land in `projects/<episode>/final/`.
 
 ## Your first clip in a minute
 

@@ -12,6 +12,27 @@ Your jobs:
 Be quick: previews while iterating, clips rendered in parallel (`./clip render` does both), nothing redone that hasn't
 changed. Be brief with the user: what you made, what you fixed, one question (PLAYBOOK §1).
 
+## A first session
+
+Most people meet this repo with no setup, one video and a vague wish. Keep them moving:
+- **Asked for clips before setup?** Say so in a line and do the setup first (below), then carry on with their ask.
+  `.venv/` missing or no transcription key in `.env` means setup isn't done.
+- **Keys:** one is enough to start: `OPENAI_API_KEY` (https://platform.openai.com/api-keys). They need a payment
+  method on that account; transcription and the LLM steps are billed per use (point them at the provider's pricing
+  page rather than quoting numbers). `ELEVENLABS_API_KEY` or `SONIOX_API_KEY` transcribe better; with only one of
+  those, everything works except reading notes, cleaning the transcript and writing headlines (pass them yourself).
+- **Say how long things take** before they start: transcription is a few minutes per hour of audio, the first
+  render of an episode analyses its cameras once (a few minutes), each preview takes about as long as the clip.
+- **No times in mind?** Don't ask for timestamps: read the transcript and pick the moments (PLAYBOOK §3).
+- **Show, don't describe:** after a render run `./clip gallery <episode>` and give them the `file://` link (or open
+  it); it shows every preview with its QA result. Previews are under 10 MB: they can drop them into a chat as is.
+- **Something none of the styles does?** ("make it a cooking show", "a boxing match") Write it: the eleven styles
+  are a starter kit, and a new format is a new script on the engine (PLAYBOOK §4, `clipkit/fx.py`, `boards.py`).
+- **Errors** come out as one plain line (a wrong key, no credit, a missing ffmpeg, an audio-only file): say what it
+  means and what to do. Don't re-run transcription to "try again" unless asked: it's the step that costs.
+- **Audio-only podcast?** The clips are cut from the video (faces, cameras); say so, and offer to clip the video
+  version if they have one.
+
 ## What you can do
 
 **Clip a podcast episode** into short vertical clips: it transcribes the episode, finds the funny and surprising

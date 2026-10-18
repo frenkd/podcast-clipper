@@ -10,6 +10,23 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 
+DETECTED = {}  # what the last transcription found out by itself: {"language": "sl"}
+_LANGS = {"english": "en", "slovenian": "sl", "slovene": "sl", "german": "de", "french": "fr", "spanish": "es",
+          "italian": "it", "portuguese": "pt", "dutch": "nl", "polish": "pl", "croatian": "hr", "serbian": "sr",
+          "czech": "cs", "slovak": "sk", "hungarian": "hu", "swedish": "sv", "danish": "da", "norwegian": "no",
+          "finnish": "fi", "russian": "ru", "ukrainian": "uk", "japanese": "ja", "chinese": "zh", "korean": "ko",
+          "eng": "en", "slv": "sl", "deu": "de", "ger": "de", "fra": "fr", "fre": "fr", "spa": "es", "ita": "it",
+          "por": "pt", "nld": "nl", "dut": "nl", "pol": "pl", "hrv": "hr", "srp": "sr", "ces": "cs", "cze": "cs"}
+
+
+def detected_language(value):
+    """a service's language ("slovenian", "slv", "sl") as an ISO 639-1 code, or None"""
+    v = (value or "").strip().lower()
+    if len(v) == 2:
+        return v
+    return _LANGS.get(v)
+
+
 PROVIDERS = {"soniox": "SONIOX_API_KEY", "elevenlabs": "ELEVENLABS_API_KEY", "openai": "OPENAI_API_KEY"}  # preferred first
 
 
@@ -91,7 +108,7 @@ def chunked(audio, duration, extract, one, chunk_s, overlap_s, concurrency, on_s
     return stitch(results, [round(s * 1000) for s in starts], overlap_s * 1000)
 
 
-def post_audio(url, path, fields, headers, label, retries=4, timeout=900):
+def post_audio(url, path, fields, headers, label, retries=4, timeout=900, key=None):
     """multipart POST of an audio file plus form fields ([(name, value)], repeats allowed) -> parsed JSON; retries
     rate limits, server errors and dropped connections with a growing wait"""
     boundary = uuid.uuid4().hex
@@ -109,10 +126,11 @@ def post_audio(url, path, fields, headers, label, retries=4, timeout=900):
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
             msg = e.read().decode(errors="replace")[:500]
-            if e.code in (429, 500, 502, 503, 504) and attempt < retries:
+            if e.code in (429, 500, 502, 503, 504) and attempt < retries and "quota" not in msg.lower():
                 time.sleep(2 ** attempt * 3)
                 continue
-            raise RuntimeError(f"{label} -> {e.code}: {msg}") from None
+            from .config import api_error
+            raise api_error(label, key or "its API key", e.code, msg) from None
         except (urllib.error.URLError, TimeoutError, ConnectionError):
             if attempt < retries:
                 time.sleep(2 ** attempt * 3)

@@ -31,6 +31,7 @@ make clips
   angles <episode> [--force]              camera angles + who sits where (work/angles.json, angles.jpg)
   angles <episode> --set A2=3 C1=1        correct it after looking at angles.jpg (angle A, 2nd face from left = speaker 3)
   angles <episode> --who 640 680          who is talking when, by whose mouth moves (check diarization; Edit(who=…))
+  gallery <episode>                       a page to watch every preview (and final) side by side, with QA
   review <video.mp4> <out.jpg> [--step 0.25] [--from 12] [--to 16]   frame grid of any video
   zones <video.mp4|image> <out.jpg> [--at 3 12] [--apps instagram x linkedin tiktok]   under each app's UI
 
@@ -64,7 +65,10 @@ def show(p):
 
 
 def _engine(script, args, episode=None):
+    from prep.config import FFMPEG
     env = dict(os.environ, PYTHONPATH=os.pathsep.join([ROOT, os.path.join(ROOT, "clips")]))
+    if os.path.isabs(FFMPEG):  # the engine calls plain `ffmpeg`: the one prep found comes first on its PATH
+        env["PATH"] = os.path.dirname(FFMPEG) + os.pathsep + env.get("PATH", "")
     if episode:
         env["CLIP_PROJECT"] = episode
     return subprocess.call([sys.executable, *script, *args], env=env)
@@ -106,6 +110,15 @@ def main(argv=None):
         print(f"wrote scripts/{os.path.basename(path)} in {p['id']} ({q.style}: {quick.STYLES[q.style]})\n"
               f"rendering a preview; edit the script and `./clip render {p['id']} {os.path.basename(path)[:2]}` any time", flush=True)
         return _engine([os.path.join(ROOT, "clips", "run.py")], [p["id"], path] + (["--final"] if q.final else []))
+    if cmd == "gallery":
+        from prep import gallery
+        p = find_project(rest[0] if rest else None)
+        pages = gallery.write(p["id"])
+        if not pages:
+            raise SystemExit(f"no clips in {p['id']} yet: ./clip render {p['id']} (or ./clip quick)")
+        for page in pages:
+            print(f"{page}\n  open it in a browser: file://{page.replace(os.sep, '/')}")
+        return 0
     if cmd in ("publish", "yt"):  # yt: short for `publish youtube`
         from publish import cli
         return cli(rest if cmd == "publish" else ["youtube", *rest])
@@ -121,6 +134,13 @@ def main(argv=None):
 
     if cmd == "new":
         files = [os.path.abspath(f) for f in pos]
+        from prep.files import kind_for
+        for f in files:  # every file checked before an episode folder exists
+            if not os.path.exists(f):
+                raise SystemExit(f"no such file: {f}")
+            kind_for(f)
+        if not any(kind_for(f) == "video" for f in files):
+            raise SystemExit("./clip new needs the episode's video (plus any notes or subtitles)")
         video = next((f for f in files if os.path.splitext(f)[1].lower() in (".mp4", ".mov", ".m4v", ".mkv", ".webm", ".avi")), None)
         p = create_project(a.title or (os.path.basename(video) if video else "New episode"), a.slug)
         for f in files:

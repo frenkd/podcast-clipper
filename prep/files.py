@@ -8,11 +8,24 @@ from .store import get_project, now, source_dir, update_project, work_dir
 
 VIDEO_EXT = {".mp4", ".mov", ".m4v", ".mkv", ".webm", ".avi"}
 SUB_EXT = {".srt", ".vtt"}
+NOTE_EXT = {".md", ".txt", ".text", ".markdown", ".html", ".htm", ".csv", ".json", ".rtf"}
+AUDIO_EXT = {".mp3", ".m4a", ".wav", ".aac", ".flac", ".ogg", ".opus", ".aif", ".aiff", ".wma"}
 
 
 def kind_for(name):
+    """video, subtitles or context (notes); anything else is refused with a reason"""
     ext = os.path.splitext(name)[1].lower()
-    return "video" if ext in VIDEO_EXT else "subtitles" if ext in SUB_EXT else "context"
+    if ext in VIDEO_EXT:
+        return "video"
+    if ext in SUB_EXT:
+        return "subtitles"
+    if ext in NOTE_EXT:
+        return "context"
+    if ext in AUDIO_EXT:
+        raise SystemExit(f"{os.path.basename(name)} is audio only: the clips are cut from the episode's video (faces, "
+                         "camera angles), so add the video file (.mp4, .mov, .mkv, .webm)")
+    raise SystemExit(f"{os.path.basename(name)}: not a video ({', '.join(sorted(VIDEO_EXT))}), subtitles (.srt, .vtt) "
+                     "or text notes (.md, .txt, …)")
 
 
 def safe_name(name):

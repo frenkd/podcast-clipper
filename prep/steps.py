@@ -36,6 +36,9 @@ def run_step(pid, step, fn):
         fn(report)
     except BaseException as e:
         set_step(pid, step, status="error", error=str(e) or type(e).__name__, finishedAt=now(), message=None)
+        from .config import ServiceError
+        if isinstance(e, ServiceError):  # a plain line is enough: the service told us what's wrong
+            raise SystemExit(f"{step}: {e}") from None
         if not isinstance(e, (SystemExit, KeyboardInterrupt)):
             traceback.print_exc(file=sys.stderr)
         raise
@@ -129,7 +132,9 @@ def step_transcribe(pid, use_subtitles=None):
             parts_path=os.path.join(work_dir(pid), f"{source}.parts.json"))
         write_json(os.path.join(work_dir(pid), "words.json"), words)
         write_json(transcript_path(pid), {"source": source, "cues": words_to_cues(words), "words": words})
-        update_project(pid, lambda p: p.update(transcriptSource=source))
+        lang = stt.DETECTED.get("language")
+        update_project(pid, lambda p: p.update(transcriptSource=source, **({} if p.get("language") or not lang else
+                                                                            {"language": lang})))
         apply_fixes(pid)
     run_step(pid, "transcribe", go)
 
@@ -270,8 +275,14 @@ def step_clean(pid):
 
 
 def auto_run(pid):
-    """every step that isn't done yet"""
+    """every step that isn't done yet. Without an OpenAI key the two LLM steps (reading the notes, cleaning up the
+    transcript) are skipped: the clips still work, from the raw transcript."""
     video_path(get_project(pid))
+    llm = bool(os.environ.get("OPENAI_API_KEY"))
     for step, fn in (("context", step_context), ("transcribe", step_transcribe), ("clean", step_clean)):
-        if not is_done(get_project(pid), step):
-            fn(pid)
+        if is_done(get_project(pid), step):
+            continue
+        if step != "transcribe" and not llm:
+            print(f"  {step}: skipped (no OPENAI_API_KEY in .env: {'notes are not read' if step == 'context' else 'captions use the raw transcript'})")
+            continue
+        fn(pid)

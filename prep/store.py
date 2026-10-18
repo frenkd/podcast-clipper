@@ -87,7 +87,11 @@ def find_project(q):
     hits = [p for p in list_projects() if q in p["id"]]
     if len(hits) == 1:
         return hits[0]
-    raise SystemExit(f'"{q}" matches {", ".join(p["id"] for p in hits)}' if hits else f'no episode matches "{q}"')
+    if hits:
+        raise SystemExit(f'"{q}" matches several episodes: {", ".join(p["id"] for p in hits)} (use more of the name)')
+    have = [p["id"] for p in list_projects()]
+    raise SystemExit(f'no episode matches "{q}"' + (f"; there are: {', '.join(have)}" if have else
+                                                       "; there are none yet: ./clip new <video> --go"))
 
 
 def _write(p):
