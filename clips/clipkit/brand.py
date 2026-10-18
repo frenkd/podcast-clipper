@@ -291,5 +291,7 @@ def end_card(t, canvas, tagline=None):
         place(canvas, text_line(EPISODE, F_MONO_B, 44, ACCENT), W / 2, y + 26, 1, ease_out((t - 0.45) / 0.3))
         y += 76
     line = tagline or THEME["end_line"]
+    if not (line or logo is not None or EPISODE_TITLE or EPISODE or speaker()):
+        line = "Full episode: link in bio"  # never an empty end card (theme.json's end_line replaces this)
     if line:
         place(canvas, text_line(line, F_MONO, 42, MUTED), W / 2, y + 26, 1, ease_out((t - 0.55) / 0.3))

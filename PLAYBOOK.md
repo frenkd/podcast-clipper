@@ -61,12 +61,21 @@ line, `./clip angles <id> --set A2=3 C1=1` (angle A's 2nd face from the left is 
 junk angle, then re-render. If names are swapped, fix `"speakers"` in `project.json` (id -> name) and re-run
 `./clip angles <id> --force`. A single-camera show needs none of this.
 
+**Who's on screen.** The camera follows the transcript's speaker labels, so it's only as right as they are; some
+diarization merges two voices into one (ElevenLabs keeps them apart best). Check every first preview by eye. When
+a render notes `SPEAKER?` (the person shown barely moves their mouth while the voice runs), or you see the wrong
+face: `./clip angles <id> --who t0 t1` prints, per moment, each seat (A1 = angle A, first face from the left) and
+how much its mouth moves against its own normal, with the words said then; set the speakers by hand with
+`Edit(…, who=[(t0, t1, "Name"), …])` (source seconds). If the analysis warns that an angle has the same speaker in
+two seats, fix that first (`--set A1=… A2=…`).
+
 ## 3. Pick moments
 
 Read the **whole** cleaned transcript. Keep moments that are funny, surprising or quotable (a confession, a strong
 take, a number nobody expected, a story told well, a callback that pays off), not dry explanations. Each stands alone:
 setup → turn → payoff in 15–40 s, ending right after the payoff. Start a second or two **before** the setup, so the
-clip never opens mid-thought. Sort them as you go: **animatable** or **conversation**.
+clip never opens mid-thought, but not inside someone else's sentence (check the first and last caption). Sort them
+as you go: **animatable** or **conversation**. No cleaned transcript (no OpenAI key)? Read `./clip transcript <id>`.
 
 ## 4. Pick the energy
 

@@ -27,11 +27,11 @@ def detected_language(value):
     return _LANGS.get(v)
 
 
-PROVIDERS = {"soniox": "SONIOX_API_KEY", "elevenlabs": "ELEVENLABS_API_KEY", "openai": "OPENAI_API_KEY"}  # preferred first
+PROVIDERS = {"elevenlabs": "ELEVENLABS_API_KEY", "soniox": "SONIOX_API_KEY", "openai": "OPENAI_API_KEY"}  # preferred first
 
 
 def provider():
-    """"soniox", "elevenlabs" or "openai": STT in .env if set, else the first service in PROVIDERS whose key is there
+    """"elevenlabs", "soniox" or "openai": STT in .env if set, else the first service in PROVIDERS whose key is there
     (Soniox and ElevenLabs: words and speakers in one request; OpenAI: one key for everything)"""
     forced = (os.environ.get("STT") or "").strip().lower()
     if forced:

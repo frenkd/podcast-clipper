@@ -8,12 +8,13 @@ look.
 
 ## Get started
 
-You need Python 3.14+, ffmpeg, a coding agent (Claude Code, Codex, Cursor, …) and an
-[OpenAI API key](https://platform.openai.com/api-keys).
+You need Python 3.14+, ffmpeg, a coding agent (Claude Code, Codex, Cursor, …) and one API key: an
+[OpenAI](https://platform.openai.com/api-keys) key does everything; an [ElevenLabs](https://elevenlabs.io) key
+transcribes best (keeps speakers apart most reliably), and the two together are the best setup.
 
 1. `git clone https://github.com/frenkd/podcast-clipper`, open the folder with your agent and ask:
    **"Do the first-time setup."** It installs what's missing (asking first) and runs a self-test.
-2. Open `.env` and paste in your OpenAI key. (Never paste keys into the chat.)
+2. Open `.env` and paste in your key(s). (Never paste keys into the chat.)
 3. Ask: **"Make clips from ~/Videos/episode.mp4"**. Add anything that helps (show notes, the guest's name, a moment
    you liked) or just say "go with the defaults".
 
@@ -70,8 +71,8 @@ Every clip follows it: colours, fonts, caption style, logo, end card. All the op
   ([publish/](publish/README.md)).
 - **No copyright trouble:** all music and sound effects are generated in code.
 
-Transcription uses OpenAI by default; add an [ElevenLabs](https://elevenlabs.io) or [Soniox](https://soniox.com) key
-to `.env` for better accuracy with names, speakers and non-English shows. Runs on macOS, Linux and Windows.
+Transcription uses ElevenLabs, [Soniox](https://soniox.com) or OpenAI, whichever key is in `.env`; OpenAI also
+reads your notes, cleans up the transcript and writes the headlines. Runs on macOS, Linux and Windows.
 
 ## How it's built
 

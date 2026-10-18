@@ -127,7 +127,7 @@ class SpeechToText(unittest.TestCase):
         keep = {k: os.environ.get(k) for k in ("STT", "SONIOX_API_KEY", "ELEVENLABS_API_KEY", "OPENAI_API_KEY")}
         try:
             for env, want in (({"SONIOX_API_KEY": "x", "OPENAI_API_KEY": "y"}, "soniox"), ({"OPENAI_API_KEY": "y"}, "openai"),
-                              ({"ELEVENLABS_API_KEY": "z", "OPENAI_API_KEY": "y"}, "elevenlabs"),
+                              ({"ELEVENLABS_API_KEY": "z", "SONIOX_API_KEY": "x"}, "elevenlabs"),
                               ({"SONIOX_API_KEY": "x", "OPENAI_API_KEY": "y", "STT": "openai"}, "openai")):
                 for k in keep:
                     os.environ.pop(k, None)

@@ -88,38 +88,69 @@ def _focus_timeline(edit, n, data=None):
     return out
 
 
-MOUTH_RATIO, MOUTH_MIN, MOUTH_SAMPLES = 1.2, 0.45, 8
+MOUTH_LOUD, MOUTH_QUIET, MOUTH_RATIO, MOUTH_SAMPLES = 1.1, 1.1, 1.2, 8  # tuned on hand-labelled Kacil shots: helps
+# where diarization merged two voices, and never moved the camera off a speaker the transcript had right
 _MOUTH = {}
 
 
-def _mouth_check(edit, idx, slots, target):
-    """In a wide shot: the seat whose mouth moves most at most moments while the shot runs (and clearly more than
-    `target`'s on average), if that isn't `target`, the seat of whoever the transcript says is talking. Diarization
-    sometimes merges two voices into one speaker id; the picture doesn't lie. None: the transcript's pick stands
-    (or there's too little to go on)."""
-    from .angles import _mouth_activity
+def _mouth_check(edit, ang, idx, slots, target):
+    """In a wide shot: a seat that's clearly talking while the transcript's speaker (`target`'s seat) isn't, at most
+    of the shot's sampled moments, if there is one. Each seat is measured against its own normal (angles.seat_baseline),
+    because a face-on seat always moves more than a side-on one. Diarization sometimes merges two voices into one
+    speaker id; this catches it without second-guessing a transcript that's right. None: the transcript stands."""
+    from .angles import _mouth_activity, seat_baseline
     if len(idx) < FPS or target not in slots:  # under a second: not worth the look
         return None
+    base = seat_baseline(ang["id"])
+    if not base or any(b is None or b <= 0 for b in base):
+        return None
+    me = slots.index(target)
     picks = np.linspace(idx[0] + FPS // 4, idx[-1] - FPS // 4, MOUTH_SAMPLES).astype(int)
-    acts = []
+    votes, n_ok = [], 0
     for i in picks:
         t = round(edit.src_t(i / FPS), 2)
         key = (t, tuple((round(s["x"]), round(s["y"])) for s in slots))
         if key not in _MOUTH:
             _MOUTH[key] = _mouth_activity(t, slots)
         a = _MOUTH[key]
-        if a and sum(v is not None for v in a) >= 2:
-            acts.append(a)
-    if len(acts) < 3:
-        return None
-    wins = [max(range(len(slots)), key=lambda k: a[k] if a[k] is not None else -1.0) for a in acts]
-    best = max(set(wins), key=wins.count)
-    mean = lambda k: (lambda v: sum(v) / len(v) if v else 0.0)([a[k] for a in acts if a[k] is not None])
-    me = slots.index(target)
-    if best != me and wins.count(best) > len(acts) / 2 and mean(best) >= MOUTH_MIN and \
-            mean(best) >= MOUTH_RATIO * max(mean(me), 0.01):
-        return slots[best]
+        if not a or a[me] is None:
+            continue
+        n_ok += 1
+        rel = [a[k] / base[k] if a[k] is not None else None for k in range(len(slots))]
+        best = max(range(len(slots)), key=lambda k: rel[k] if rel[k] is not None else -1.0)
+        if best != me and rel[best] >= MOUTH_LOUD and rel[me] < MOUTH_QUIET and rel[best] >= MOUTH_RATIO * rel[me]:
+            votes.append(best)
+    if n_ok >= 3 and votes:
+        top = max(set(votes), key=votes.count)
+        if votes.count(top) > n_ok / 2:
+            return slots[top]
     return None
+
+
+QUIET = 0.8  # a shown speaker whose mouth moves less than this x their own normal (median over a shot) is flagged
+
+
+def _looks_quiet(edit, ang, idx, target):
+    """the person this shot shows as the speaker barely moves their mouth (vs their own normal, angles.seat_baseline)
+    over most of the shot: maybe the wrong person. Only flagged (QA note), never acted on: the check is too noisy to
+    move the camera on (tuned on hand-labelled shots)."""
+    from .angles import _mouth_activity, seat_baseline
+    if len(idx) < 1.5 * FPS or not ang or target not in ang["slots"]:
+        return False
+    base = seat_baseline(ang["id"])
+    me = ang["slots"].index(target)
+    if not base or base[me] is None or base[me] <= 0:
+        return False
+    rel = []
+    for i in np.linspace(idx[0] + FPS // 4, idx[-1] - FPS // 4, 6).astype(int):
+        t = round(edit.src_t(i / FPS), 2)
+        key = (t, tuple((round(s["x"]), round(s["y"])) for s in ang["slots"]))
+        if key not in _MOUTH:
+            _MOUTH[key] = _mouth_activity(t, ang["slots"])
+        a = _MOUTH[key]
+        if a and a[me] is not None:
+            rel.append(a[me] / base[me])
+    return len(rel) >= 4 and float(np.median(rel)) < QUIET
 
 
 REFRAME_MIN = 1.5  # s: a wide shot is re-cut onto whoever talks when each part would last at least this long
@@ -166,6 +197,7 @@ def track_edit(edit):
     on real camera cuts; a rolling median drops single bad detections. Per-shot details go to state.SHOT_INFO."""
     from . import angles
     data = angles.analyse()
+    state.DOUBT = []
     nfs, n_done, shot, shots, dets, fps_, prev_last = [], 0, 0, [], [], [], None
     for (a, b), o in zip(edit.pieces, edit.offsets):
         nf = int(round((o + b - a) * FPS)) - n_done
@@ -203,10 +235,12 @@ def track_edit(edit):
             target = mine[0] if mine else max(ang["slots"], key=lambda s: s["size"])
             mode = "on" if mine else "away"
         if ang and len(ang["slots"]) > 1 and edit.focus is None and not edit.who:
-            talker = _mouth_check(edit, idx, ang["slots"], target)  # the transcript's speakers can be wrong
+            talker = _mouth_check(edit, ang, idx, ang["slots"], target)  # the transcript's speakers can be wrong
             if talker is not None:
                 target, mode = talker, "on"
                 who = talker.get("speaker") or who
+        if mode == "on" and target and _looks_quiet(edit, ang, idx, target):
+            state.DOUBT.append((idx[0] / FPS, (idx[-1] + 1) / FPS))
         info[int(sid)] = {"angle": ang["id"] if ang else None, "speaker": who, "mode": mode,
                           "wide": bool(ang and len(ang["slots"]) > 1)}
         pts = []

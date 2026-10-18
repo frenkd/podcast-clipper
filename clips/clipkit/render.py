@@ -70,6 +70,8 @@ def render(name, edit, draw, sound=None, tail=1.8, bed=None, bed_gain=0.2, duck=
         ps = best_poster(edit)
         poster = draw(poster_t, full_frame(ps), tuple(tr[min(len(tr) - 1, int(round((edit.out_t(ps) or 0) * FPS)))]))
         poster.convert("RGB").save(rbase + ".cover.jpg", quality=92)
+        if not _same_angle(ps, edit.pieces[0][0]):  # frame one only if it's the opening shot's camera: else it
+            poster = None                          # flashes another shot for a frame (the .cover.jpg stays)
 
     # review captures, taken from the frames as they're written (no seeking afterwards)
     events = _events(draw, edit.dur)
@@ -158,6 +160,19 @@ def _speaker_name(edit, until=None):
     sp = max(talk, key=talk.get) if talk else None
     name = names.get(sp) or (sp if sp and not sp.isdigit() else "")  # Edit(who=…) gives names directly
     return "" if not name or name.startswith("speaker ") or name in ("host", "Unknown") else name
+
+
+def _same_angle(a, b):
+    """whether source times a and b show the same camera angle (angles.py)"""
+    import cv2
+    from .angles import classify, fingerprint, load
+    try:
+        data = load()
+        ids = [(classify(data, [fingerprint(cv2.resize(cv2.cvtColor(full_frame(t), cv2.COLOR_RGB2GRAY), (64, 36),
+                                                      interpolation=cv2.INTER_AREA))]) or {}).get("id") for t in (a, b)]
+    except Exception:
+        return False
+    return ids[0] is not None and ids[0] == ids[1]
 
 
 def _on_screen_name(until=None):

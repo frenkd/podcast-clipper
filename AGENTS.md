@@ -15,15 +15,21 @@ changed. Be brief with the user: what you made, what you fixed, one question (PL
 ## A first session
 
 Most people meet this repo with no setup, one video and a vague wish. Keep them moving:
+- **Episode names:** `./clip new` makes a folder like `2026-10-ep12` (month + the slug); every command takes any
+  unique part of it (`ep12`).
 - **Asked for clips before setup?** Say so in a line and do the setup first (below), then carry on with their ask.
   `.venv/` missing or no transcription key in `.env` means setup isn't done.
-- **Keys:** one is enough to start: `OPENAI_API_KEY` (https://platform.openai.com/api-keys). They need a payment
-  method on that account; transcription and the LLM steps are billed per use (point them at the provider's pricing
-  page rather than quoting numbers). `ELEVENLABS_API_KEY` or `SONIOX_API_KEY` transcribe better; with only one of
-  those, everything works except reading notes, cleaning the transcript and writing headlines (pass them yourself).
+- **Keys:** any one is enough to start. `OPENAI_API_KEY` (https://platform.openai.com/api-keys) does everything;
+  `ELEVENLABS_API_KEY` transcribes best (it keeps speakers apart most reliably, and that decides who's on screen);
+  both together are the best setup. Accounts need a payment method; everything is billed per use (point them at
+  the provider's pricing page rather than quoting numbers). With no OpenAI key, `./clip go` skips reading the
+  notes and the cleanup (it says so): read the episode with `./clip transcript <id>` and write the headlines and
+  texts yourself (`--headline`, `--sticker` …).
 - **Say how long things take** before they start: transcription is a few minutes per hour of audio, the first
   render of an episode analyses its cameras once (a few minutes), each preview takes about as long as the clip.
 - **No times in mind?** Don't ask for timestamps: read the transcript and pick the moments (PLAYBOOK §3).
+- **Check who's on screen** in every first preview: look at a few frames, not only the QA line. QA clean means
+  nothing covers a face; a `SPEAKER?` note means the person shown may not be the one talking (PLAYBOOK §2).
 - **Show, don't describe:** after a render run `./clip gallery <episode>` and give them the `file://` link (or open
   it); it shows every preview with its QA result. Previews are under 10 MB: they can drop them into a chat as is.
 - **Something none of the styles does?** ("make it a cooking show", "a boxing match") Write it: the eleven styles

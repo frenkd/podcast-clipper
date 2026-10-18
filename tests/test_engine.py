@@ -330,24 +330,29 @@ class Boards(unittest.TestCase):
         self.assertEqual(when_said(E(), "clovek", 1.5), 3.0)
         self.assertIsNone(when_said(E(), "robot", 0.0))
 
-    def test_mouth_check_needs_a_clear_majority(self):
+    def test_mouth_check_only_overrides_a_quiet_speaker(self):
         from clipkit import angles, video
 
         class E:
             def src_t(self, t):
                 return 100.0 + t
         slots = [{"x": 100, "y": 100, "size": 50, "speaker": "1"}, {"x": 900, "y": 100, "size": 50, "speaker": "2"}]
-        real = angles._mouth_activity
+        ang = {"id": "A", "slots": slots}
+        real = angles._mouth_activity, angles.seat_baseline
         try:
-            for acts, want in (([0.3, 1.4], 1), ([1.2, 1.3], None), ([None, 1.4], None)):
+            angles.seat_baseline = lambda aid: [1.0, 2.0]  # seat 2 always moves more: compared to its own normal
+            for acts, want in (([0.3, 2.8], 1),   # the transcript's speaker is quiet, the other clearly talking
+                               ([1.2, 2.6], None),  # both normal: the transcript stands
+                               ([0.3, 1.4], None),  # seat 2 louder in raw numbers but under its own normal
+                               ([None, 2.8], None)):
                 video._MOUTH.clear()
                 angles._mouth_activity = lambda t, s, a=acts: list(a)
-                got = video._mouth_check(E(), list(range(90)), slots, slots[0])
+                got = video._mouth_check(E(), ang, list(range(90)), slots, slots[0])
                 self.assertEqual(got, slots[want] if want is not None else None, acts)
+                self.assertEqual(video._looks_quiet(E(), ang, list(range(90)), slots[0]), acts[0] is not None and acts[0] < 0.8)
         finally:
-            angles._mouth_activity = real
+            angles._mouth_activity, angles.seat_baseline = real
             video._MOUTH.clear()
-
 
 if __name__ == "__main__":
     unittest.main()

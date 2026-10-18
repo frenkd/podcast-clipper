@@ -10,8 +10,8 @@ E = Edit(tight(($start, $end)))
 HEADLINE = $headline
 # a word or two that pops up beside the head (None: none)
 STICKER = $sticker
-# when
-STICKER_T = E.dur * 0.45
+# when: on the word it's about (or at 45 % of the clip if that word isn't said)
+STICKER_T = when_said(E, $sticker_word, 0.8, E.dur * 0.45)
 CHUNKS = chunk_words(E.words(), 3, 16)
 
 

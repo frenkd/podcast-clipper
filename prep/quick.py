@@ -58,6 +58,7 @@ def suggest(text, style, language):
     if style == "bold":
         want["sticker"] = s("one or two words for a sticker at the clip's key moment, in the language the clip is "
                             "spoken in")
+        want["sticker_word"] = s("the exact word from the text above at the key moment, where the sticker pops up")
     if style == "dramatic":
         want["drama"] = s("a 1-3 word reaction for the punchline, the 'WAIT WHAT' or 'BRO?!' kind, in the language "
                           "the clip is spoken in")
@@ -131,6 +132,7 @@ def write_script(pid, a, b, style, headline=None, sticker=None, meme=None, name=
             start=f"{a:.2f}", end=f"{b:.2f}", headline=json.dumps(headline, ensure_ascii=False) if headline else "None",
             sticker=json.dumps(sticker, ensure_ascii=False) if sticker else "None",
             meme=json.dumps(meme or f"sigma rule #{int(a) % 89 + 11}", ensure_ascii=False),
+            sticker_word=json.dumps(got.get("sticker_word") or sticker or "", ensure_ascii=False),
             drama=json.dumps(drama or "wait what", ensure_ascii=False),
             doc_label=json.dumps(got.get("doc_label") or "Day 1", ensure_ascii=False),
             doc_line=json.dumps(doc_line or got.get("doc_line") or "The podcaster, in its natural habitat.",

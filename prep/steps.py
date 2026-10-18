@@ -136,6 +136,7 @@ def step_transcribe(pid, use_subtitles=None):
         update_project(pid, lambda p: p.update(transcriptSource=source, **({} if p.get("language") or not lang else
                                                                             {"language": lang})))
         apply_fixes(pid)
+        transcript_text(pid)
     run_step(pid, "transcribe", go)
 
 
@@ -270,8 +271,35 @@ def step_clean(pid):
                    "see work/clean.rejected.json")
         write_json(os.path.join(work_dir(pid), "clean.rejected.json"), sorted(rejected, key=lambda r: r["i"]))
         write_json(clean_path(pid), {k: v for k, v in {**tr, "cues": cleaned}.items() if k != "words"})
+        transcript_text(pid)
         apply_fixes(pid)
     run_step(pid, "clean", go)
+
+
+def transcript_text(pid):
+    """the transcript as text to read: speaker turns with times ("[12:34] Name: …"), cleaned if it has been, else
+    the raw words. Also written to work/transcript.txt. -> the text"""
+    p = get_project(pid)
+    names = {str(k): v for k, v in (p.get("speakers") or {}).items() if v and v != "Unknown"}
+    clean = read_json(clean_path(pid))
+    cues = (clean or {}).get("cues") or (read_json(transcript_path(pid)) or {}).get("cues") or []
+    if not cues:
+        words = read_json(os.path.join(work_dir(pid), "words.json")) or []
+        cues = words_to_cues(words)
+    lines, cur = [], None
+    for c in cues:
+        sp = str(c.get("sp", ""))
+        who = names.get(sp) or (f"speaker {sp}" if sp else "")
+        t = int(c["s"] // 1000)
+        stamp = f"{t // 3600}:{t // 60 % 60:02d}:{t % 60:02d}" if t >= 3600 else f"{t // 60}:{t % 60:02d}"
+        if who != cur:
+            lines.append(f"\n[{stamp}] {who}:" if who else f"\n[{stamp}]")
+            cur = who
+        lines.append(f"  {c['text']}")
+    text = "\n".join(lines).strip() + "\n"
+    with open(os.path.join(work_dir(pid), "transcript.txt"), "w", encoding="utf-8") as f:
+        f.write(text)
+    return text
 
 
 def auto_run(pid):

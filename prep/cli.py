@@ -31,6 +31,7 @@ make clips
   angles <episode> [--force]              camera angles + who sits where (work/angles.json, angles.jpg)
   angles <episode> --set A2=3 C1=1        correct it after looking at angles.jpg (angle A, 2nd face from left = speaker 3)
   angles <episode> --who 640 680          who is talking when, by whose mouth moves (check diarization; Edit(who=…))
+  transcript <episode>                    the transcript to read: speaker turns with times (also work/transcript.txt)
   gallery <episode>                       a page to watch every preview (and final) side by side, with QA
   review <video.mp4> <out.jpg> [--step 0.25] [--from 12] [--to 16]   frame grid of any video
   zones <video.mp4|image> <out.jpg> [--at 3 12] [--apps instagram x linkedin tiktok]   under each app's UI
@@ -51,7 +52,7 @@ checks
 
 
 def show(p):
-    dim = lambda s: f"\x1b[2m{s}\x1b[0m"
+    dim = lambda s: f"\x1b[2m{s}\x1b[0m" if sys.stdout.isatty() else s
     print(f"{p['title']}  {dim(p['id'])}" + (f"  {p['episode']}" if p.get("episode") else "")
           + (dim("  " + ", ".join(p["people"])) if p.get("people") else ""))
     if p.get("video"):
@@ -110,6 +111,11 @@ def main(argv=None):
         print(f"wrote scripts/{os.path.basename(path)} in {p['id']} ({q.style}: {quick.STYLES[q.style]})\n"
               f"rendering a preview; edit the script and `./clip render {p['id']} {os.path.basename(path)[:2]}` any time", flush=True)
         return _engine([os.path.join(ROOT, "clips", "run.py")], [p["id"], path] + (["--final"] if q.final else []))
+    if cmd == "transcript":
+        from prep.steps import transcript_text
+        p = find_project(rest[0] if rest else None)
+        print(transcript_text(p["id"]), end="")
+        return 0
     if cmd == "gallery":
         from prep import gallery
         p = find_project(rest[0] if rest else None)
@@ -145,7 +151,7 @@ def main(argv=None):
         p = create_project(a.title or (os.path.basename(video) if video else "New episode"), a.slug)
         for f in files:
             add_file(p["id"], f)
-        print(f"created {p['id']}")
+        print(f"created {p['id']} (commands take any unique part of the name, e.g. {p['id'].split('-', 2)[-1]})")
         if a.go:
             auto_run(p["id"])
         show(get_project(p["id"]))
@@ -192,7 +198,10 @@ def main(argv=None):
             if a.guest:
                 host = p.get("host") or next((n for n in p.get("people") or [] if HOST.lower() in n.lower()), "")
                 p["people"] = ([host] if host else []) + [a.guest]
-        show(update_project(p["id"], f))
+        before = get_project(p["id"])
+        after = update_project(p["id"], f)
+        changed = [k for k in ("title", "episode", "episodeTitle", "cuts", "people") if before.get(k) != after.get(k)]
+        print("set " + ", ".join(f"{k}: {after.get(k)}" for k in changed) if changed else "nothing changed")
     elif cmd == "fix":
         p = find_project(pos[0] if pos else None)
         if len(pos) > 1:
@@ -201,13 +210,16 @@ def main(argv=None):
             print(f"  {x['from']}  =>  {x['to']}")
     elif cmd == "srt":
         p = find_project(pos[0] if pos else None)
-        tr = read_json(clean_path(p["id"]))
-        if not tr:
-            raise SystemExit("no cleaned transcript yet; run `./clip go` first")
+        from prep.steps import transcript_path
+        tr = read_json(clean_path(p["id"])) or read_json(transcript_path(p["id"]))  # raw when there's no cleanup
+        if not tr or not tr.get("cues"):
+            raise SystemExit(f"no transcript yet: ./clip go {p['id']}")
         d = os.path.join(project_dir(p["id"]), "episode")
         os.makedirs(d, exist_ok=True)
-        open(os.path.join(d, "subtitles.srt"), "w", encoding="utf-8").write(to_srt(tr["cues"]))
-        print(os.path.join(d, "subtitles.srt"))
+        with open(os.path.join(d, "subtitles.srt"), "w", encoding="utf-8") as f:
+            f.write(to_srt(tr["cues"]))
+        print(os.path.join(d, "subtitles.srt") + ("" if read_json(clean_path(p["id"])) else
+                                                 "  (from the raw transcript: no cleanup without OPENAI_API_KEY)"))
     else:
         print(HELP)
         return 1
@@ -221,6 +233,6 @@ if __name__ == "__main__":
         sys.exit(130)
     except SystemExit as e:
         if isinstance(e.code, str):
-            sys.stderr.write(f"\x1b[31m{e.code}\x1b[0m\n")
+            sys.stderr.write(f"\x1b[31m{e.code}\x1b[0m\n" if sys.stderr.isatty() else f"{e.code}\n")
             sys.exit(1)
         raise

@@ -6,6 +6,11 @@ import threading
 import cv2
 import numpy as np
 
+try:  # OpenCV's dnn logs "Targets are not supported…" for every detector: noise, not an error
+    cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)
+except AttributeError:
+    pass
+
 from .project import ASSETS
 
 MODEL = os.path.join(ASSETS, "models", "face_detection_yunet_2023mar.onnx")

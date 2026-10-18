@@ -101,6 +101,11 @@ class Checker:
                           " (framing moved abruptly inside a shot)")
         issues += [f"CLIPPED      {who}: drawn past the edge of its card (text or icon cut off)" for who in clipped]
         notes += [f"TIGHT        {who}: closer than {MARGIN}px to its card's edge (give it room: PAD/GAP)" for who in tight]
+        doubt = sorted(set(state.DOUBT or []))
+        if doubt:
+            notes.append("SPEAKER?     " + ", ".join(f"{a:.1f}–{b:.1f}s" for a, b in doubt) + ": the person shown as talking "
+                         "barely moves their mouth: check the frames; if it's the wrong person, set Edit(who=…) "
+                         "(./clip angles <id> --who t0 t1 says who talks)")
         lines = issues + [f"note: {n}" for n in notes]
         with open(path, "w") as fh:
             fh.write("\n".join(lines) + "\n" if lines else "OK\n")

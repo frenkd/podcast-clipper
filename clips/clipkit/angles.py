@@ -187,6 +187,38 @@ def _mouth_activity(t, slots):
     return out
 
 
+BASELINE_SAMPLES = 24
+
+
+def seat_baseline(angle_id):
+    """each seat's typical mouth movement in this camera angle, over moments spread across the whole episode (talking
+    and listening alike): a face-on seat always moves more than a side-on one, so seats are compared against their
+    own normal, never against each other. Cached in work/cache/mouth_baseline.json, one angle at a time."""
+    path = os.path.join(CACHE, "mouth_baseline.json")
+    cache = {}
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            cache = json.load(f)
+    if angle_id in cache:
+        return cache[angle_id]
+    data = load()
+    ang = next((a for a in data["angles"] if a["id"] == angle_id), None)
+    if not ang or not ang["slots"]:
+        return None
+    t_all, th = _samples()
+    ts = [float(t) for t, x in zip(t_all, th) if (classify(data, [fingerprint(x)]) or {}).get("id") == angle_id]
+    if len(ts) < 6:
+        return None
+    pick = [ts[int(i)] for i in np.linspace(0, len(ts) - 1, min(BASELINE_SAMPLES, len(ts)))]
+    acts = [a for a in (_mouth_activity(t, ang["slots"]) for t in pick) if a]
+    base = [float(np.median(v)) if len(v) >= 4 else None
+            for v in ([a[k] for a in acts if a[k] is not None] for k in range(len(ang["slots"])))]
+    cache[angle_id] = base
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(cache, f)
+    return base
+
+
 def _best_match(score):
     """one-to-one slot -> speaker matching maximising the total score -> [(slot, speaker_index, margin)]"""
     n, m = score.shape
@@ -360,6 +392,12 @@ def analyse(force=False):
     json.dump(data, open(JSON, "w"), indent=1, ensure_ascii=False)
     sheet(data)
     print(f"angles: {len([a for a in angles if not a.get('skip')])} angles, {len(speakers)} speakers -> {JSON}, check {SHEET}")
+    for a in angles:
+        sp = [s.get("speaker") for s in a["slots"] if s.get("speaker")]
+        dup = sorted({x for x in sp if sp.count(x) > 1})
+        if dup and not a.get("skip"):
+            print(f"angles: angle {a['id']} has the same speaker in two seats ({', '.join(map(str, dup))}): fix it with "
+                  f"./clip angles <id> --set {a['id']}1=… {a['id']}2=… after looking at {SHEET}")
     return load()
 
 
@@ -434,7 +472,9 @@ def set_speakers(pairs):
 
 def who(t0, t1, step=0.5):
     """who is talking between t0 and t1 (source seconds), by mouth movement of the faces on screen: one line per
-    sample, with the words said then. For checking diarization by eye-free means; Edit(who=…) takes the result."""
+    sample, with the words said then: each seat (A1 = angle A, first face from the left) and how much its mouth moves
+    against its own normal (1.0 = typical for that seat; a face-on seat always moves more than a side-on one). For
+    checking diarization; Edit(who=…) takes the result."""
     from concurrent.futures import ThreadPoolExecutor
     data = load()
     names = {k: v["name"] for k, v in data["speakers"].items()}
@@ -457,8 +497,10 @@ def who(t0, t1, step=0.5):
         if a is None:
             print(f"{t:8.2f}  -  (no known angle)  {said}")
             continue
-        label = lambda sl: names.get(str(sl.get("speaker")), sl.get("speaker")) or "?"
-        vals = [(v, label(sl)) for v, sl in zip(act or [], a["slots"]) if v is not None]
+        base = seat_baseline(a["id"]) or [None] * len(a["slots"])
+        label = lambda k, sl: f'{a["id"]}{k + 1} ' + (names.get(str(sl.get("speaker")), sl.get("speaker")) or "?")
+        vals = [((v / base[k]) if base[k] else v, label(k, sl)) for k, (v, sl) in enumerate(zip(act or [], a["slots"]))
+                if v is not None]
         if not vals:
             print(f"{t:8.2f}  {a['id']}  (no faces)  {said}")
             continue

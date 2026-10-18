@@ -17,6 +17,7 @@ import glob
 import importlib
 import json
 import os
+import sys
 
 from prep.config import FFPROBE
 from prep.media import run
@@ -127,9 +128,10 @@ def cli(rest):
         for i, item in enumerate(read_plan(pid, name)[mod.ITEMS], 1):
             issues = mod.problems(pid, item)
             bad += bool(issues)
-            print(f"{i}. {item.get('title')}  \x1b[2m{mod.status(item)}\x1b[0m")
+            tty = sys.stdout.isatty()
+            print(f"{i}. {item.get('title')}  " + (f"\x1b[2m{mod.status(item)}\x1b[0m" if tty else f"({mod.status(item)})"))
             for x in issues:
-                print(f"   \x1b[31m{x}\x1b[0m")
+                print(f"   \x1b[31m{x}\x1b[0m" if tty else f"   ! {x}")
         return 1 if bad else 0
     else:
         mod.upload(pid, {int(x) for x in pos[1:]} or None)
